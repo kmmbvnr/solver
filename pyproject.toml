@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shiftopt"
+version = "0.1.0"
+description = "Embeddable linear optimization and resource-constrained candidate selection"
+requires-python = ">=3.10"
+dependencies = ["highspy>=1.16,<2", "numpy>=1.24", "scipy>=1.11"]
+
+[project.optional-dependencies]
+roadef = ["numba>=0.61", "ortools>=9.12,<10"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+shiftopt = ["native/*.rs"]
