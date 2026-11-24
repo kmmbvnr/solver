@@ -13,7 +13,7 @@ from scipy.sparse.csgraph import dijkstra
 from shiftopt import Model, MINIMIZE, quicksum
 
 
-def propose(graph, jobs, scenario, loads, via, period, rng):
+def propose(graph, jobs, scenario, loads, via, period, rng, change_limit=None):
     """Build a pool of detours and select a compatible subset for one period."""
     blocked = next((x["links"] for x in scenario["interventions"] if x["t"] == period), [])
     blocked = set(blocked)
@@ -75,6 +75,8 @@ def propose(graph, jobs, scenario, loads, via, period, rng):
                 by_link.setdefault(i, []).append(x * var)
     for group in by_job.values():
         model.addConstr(quicksum(group) <= 1)
+    if change_limit is not None:
+        model.addConstr(quicksum(variables) <= change_limit)
     peak = model.addVar(lb=0)
     excess = []
     for i in set(by_link).union(np.argsort(-load)[:8]):
@@ -94,19 +96,21 @@ def propose(graph, jobs, scenario, loads, via, period, rng):
     return trial
 
 
-def solve(folder, name, checker, output, rounds):
+def solve(folder, name, checker, output, rounds, period_only=False):
     paths = [folder / f"{name}-{k}.json" for k in ("net", "tm", "scenario")]
     graph, traffic, scenario = (json.loads(p.read_text()) for p in paths)
     jobs = traffic["demands"]
     source = np.array([j["s"] for j in jobs])
-    via = source.copy()
+    periods_count = len(jobs[0]["v"])
+    via = np.tile(source, (periods_count, 1))
     rng = np.random.default_rng(7)
     with tempfile.TemporaryDirectory() as scratch:
         candidate = Path(scratch) / "plan.json"
 
         def check(waypoints):
-            routes = [{"d": int(j), "t": p, "w": [int(waypoints[j])]}
-                      for j in np.flatnonzero(waypoints != source) for p in range(len(jobs[j]["v"]))]
+            routes = [{"d": int(j), "t": p, "w": [int(waypoints[p, j])]}
+                      for j in np.flatnonzero(np.any(waypoints != source, axis=0))
+                      for p in range(periods_count) if waypoints[p, j] != source[j]]
             candidate.write_text(json.dumps({"srpaths": routes}))
             run = subprocess.run([checker, "--net", paths[0], "--tm", paths[1], "--scenario", paths[2],
                                   "--srpaths", candidate, "--max-decimal-places", "6"], capture_output=True)
@@ -121,7 +125,17 @@ def solve(folder, name, checker, output, rounds):
             ranked = sorted(current, key=lambda row: -row["sat"])
             periods = list(dict.fromkeys(row["t"] for row in ranked))
             loads = {(r["t"], r["from"], r["to"]): r["sat"] for r in current}
-            trial = propose(graph, jobs, scenario, loads, via, periods[step % min(3, len(periods))], rng)
+            period = periods[step % (len(periods) if period_only else min(3, len(periods)))]
+            limit = None
+            if period_only:
+                budgets = [x["value"] for x in scenario["budget"] if x["t"] in (period, period + 1)]
+                limit = max(1, min(budgets, default=4) // 4)
+            moves = propose(graph, jobs, scenario, loads, via[period], period, rng, limit)
+            trial = via.copy()
+            if period_only:
+                trial[period] = moves
+            else:
+                trial[:] = moves
             if np.array_equal(via, trial):
                 continue
             new = check(trial)
@@ -137,5 +151,6 @@ if __name__ == "__main__":
     parser.add_argument("checker", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--rounds", type=int, default=6)
+    parser.add_argument("--period-only", action="store_true", help="optimize one period per iteration")
     args = parser.parse_args()
-    solve(args.folder, args.instance, args.checker.resolve(), args.output, args.rounds)
+    solve(args.folder, args.instance, args.checker.resolve(), args.output, args.rounds, args.period_only)
