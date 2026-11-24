@@ -1,8 +1,8 @@
 # ROADEF/EURO 2016 · Inventory Routing
 
-Календарный поиск строит план поставок. LP уточняет объёмы, пул маршрутов улучшает первые четыре дня, CP-SAT уточняет расписание.
+A calendar search builds a delivery plan. Linear programming refines delivery quantities, a route pool improves the first four days, and CP-SAT adjusts shift and stop times.
 
-После установки `.[roadef]` выполните из этого каталога. В архивах `data/` находятся все 20 входов финала B+X. [Данные и валидатор](https://roadef.org/challenge/2016/en/instances.php).
+After installing `.[roadef]`, run the commands from this directory. The archives in `data/` contain all 20 instances from the B+X final. [Official instances and checker](https://roadef.org/challenge/2016/en/instances.php).
 
 ```sh
 work=$(mktemp -d)
@@ -11,6 +11,8 @@ unzip -q data/X.zip -d "$work"
 python solve.py "$work/Instances_B_V25-11042016/V2.24.xml" --output "$work/plan.xml"
 ```
 
-Для проверки передайте валидатору путь к входному XML и путь к `plan.xml` двумя аргументами.
+Pass the input XML and `plan.xml` to the official checker as two arguments.
 
-[Замеры по входам](benchmark.csv) перенесены из исходного проекта. Валидатор принял 20/20 планов, медиана времени запуска 22,3 с, максимум 83,3 с на одном ядре Intel. Балл B+X — **8,7121** против **0,00** у победителя S17 (Ahmed Kheiri). На B24 логистическое отношение — 0,018332 против 0,011219. Меньше — лучше. Официальный лимит составлял 30 минут CPU на вход. [Таблица финала](https://roadef.org/challenge/2016/en/finalResults.php).
+The checker accepted all 20 plans in the original benchmark. On one Intel core, median wall time was 22.3 seconds and the maximum was 83.3 seconds. [Per-instance results](benchmark.csv).
+
+The B+X score was **8.7121** versus **0.00** for the winner, S17 (Ahmed Kheiri). On B24, the logistic ratio was 0.018332 versus 0.011219. Lower scores and ratios are better. The official limit was 30 minutes of CPU time per instance. [Final standings](https://roadef.org/challenge/2016/en/finalResults.php).

@@ -1,8 +1,8 @@
 # ROADEF/EURO 2026 · Keep the Flow
 
-Поиск подбирает общий набор маршрутов, затем уточняет его по периодам с учётом бюджета изменений.
+The search builds a route set shared across periods, then refines it for each period within the reconfiguration budget.
 
-После установки `.[roadef]` выполните из этого каталога. Для setX-01 используйте `solve.py`, для setX-02 и setX-03 — `run_static.py`, который хранит одинаковые строки таблицы маршрутов один раз.
+After installing `.[roadef]`, run the commands from this directory. For setX-02 and setX-03, change `case_id` and replace `solve.py` with `run_static.py`, which stores identical routing-table rows once.
 
 ```sh
 export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 NUMBA_NUM_THREADS=1
@@ -17,12 +17,12 @@ python rank.py "$case_id" "$work/check.json" qualification_results/readme.md \
   qualification_results/log qualification_results/loads_vector.csv
 ```
 
-Входы из снимка `8362c373` уже в `data/`. Валидатор v1.2.4 и файлы для `rank.py` доступны у организаторов. [Материалы и валидатор](https://roadef.org/challenge/2026/en/material.php) · [Протокол квалификации](https://gitlab.com/Orange-OpenSource/network-optimization-tools/challenge-roadef-2026/-/tree/8362c373f3dba5733af02f30ab01160afa089b41/qualification_results).
+The inputs in `data/` come from snapshot `8362c373`. The organizers provide checker v1.2.4 and the files used by `rank.py`. [Official materials and checker](https://roadef.org/challenge/2026/en/material.php) · [Qualification results](https://gitlab.com/Orange-OpenSource/network-optimization-tools/challenge-roadef-2026/-/tree/8362c373f3dba5733af02f30ab01160afa089b41/qualification_results).
 
-В исходных замерах валидатор принял все три плана. Место рассчитано вставкой в таблицу квалификации для каждого входа. Нагрузки сравниваются лексикографически по убыванию.
+The checker accepted all three plans in the original benchmark. Each rank shows where our plan would place among the published qualification results for that instance. Link loads are sorted from highest to lowest and compared lexicographically.
 
-| Вход | Место | Лидер | Первая отличающаяся загрузка, наша / лидера |
+| Instance | Rank | Leader | First differing link load (ours / leader) |
 |---|---:|---|---:|
-| setX-01 | 36 | J156 | №1 · 38,8174% / 38,8170% |
-| setX-02 | 46 | J156 | №8 · 33,4454% / 33,1240% |
-| setX-03 | 46 | S33 | №2 · 40,6091% / 34,6417% |
+| setX-01 | 36 | J156 | #1 · 38.8174% / 38.8170% |
+| setX-02 | 46 | J156 | #8 · 33.4454% / 33.1240% |
+| setX-03 | 46 | S33 | #2 · 40.6091% / 34.6417% |
