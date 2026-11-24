@@ -8,4 +8,6 @@ Compose heuristics with `run_pipeline(steps, score, seconds=limit)`. Each step r
 
 - Inventory routing in [ROADEF/EURO 2016](demos/roadef/2016/).
 - Glass cutting in [ROADEF/EURO 2018](demos/roadef/2018/).
+- Maintenance scheduling in [ROADEF/EURO 2020](demos/roadef/2020/).
+- Truck loading in [ROADEF/EURO 2022](demos/roadef/2022/).
 - Traffic routing in [ROADEF/EURO 2026](demos/roadef/2026/).
