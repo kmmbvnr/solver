@@ -140,7 +140,8 @@ def write_plan(nodes, output):
         writer.writerows(nodes)
 
 
-def solve(folder, name, params, output, stages=("strips", "shelves", "repair"), seconds=170, on_step=None):
+def solve(folder, name, params, output, stages=("strips", "shelves", "repair", "beam"), seconds=170, on_step=None):
+    from beam import beam_plan
     from shelves import build_shelves
 
     problem = read_problem(folder, name, params)
@@ -164,7 +165,17 @@ def solve(folder, name, params, output, stages=("strips", "shelves", "repair"), 
         prefix = [row for row in plan if row[0] < first]
         return build_shelves(problem, deadline, prefix=prefix, fine=True)
 
-    operators = {"strips": baseline, "shelves": shelves, "repair": repair}
+    def beam(plan, deadline):
+        best = plan
+        for breadth in (12, 48, 128):
+            candidate = beam_plan(problem, deadline, breadth)
+            if candidate is None:
+                break
+            if best is None or used_width(candidate) < used_width(best):
+                best = candidate
+        return best
+
+    operators = {"strips": baseline, "shelves": shelves, "repair": repair, "beam": beam}
     result = run_pipeline([operators[s] for s in stages], used_width, seconds=seconds, on_step=on_step)
     if result is None:
         raise ValueError("No complete cutting plan found within the budget")
@@ -176,8 +187,8 @@ if __name__ == "__main__":
     parser.add_argument("folder", type=Path)
     parser.add_argument("instance")
     parser.add_argument("output", type=Path)
-    parser.add_argument("--stages", nargs="+", choices=("strips", "shelves", "repair"),
-                        default=("strips", "shelves", "repair"))
+    parser.add_argument("--stages", nargs="+", choices=("strips", "shelves", "repair", "beam"),
+                        default=("strips", "shelves", "repair", "beam"))
     parser.add_argument("--seconds", type=float, default=170)
     args = parser.parse_args()
     solve(args.folder, args.instance, Path(__file__).parent/"data/global_param.csv", args.output, args.stages, args.seconds)

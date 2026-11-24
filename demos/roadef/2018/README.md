@@ -1,14 +1,19 @@
 # ROADEF/EURO 2018 · Glass Cutting
 
-The official checker accepted all three stage proposals on each of the 30 final instances. Compared with the strip constructor in the same run, the pipeline reduced waste on 29 instances, with a median reduction of 26.6% across all 30. The best instance rank improved from 13th in the archived baseline to 12th. ShiftOpt still scored **0 points**. The workbook labels the four-way tie for last **20th of 20**. J28 won with 286 points. [Pipeline results](pipeline.csv) · [Archived baseline](benchmark.csv) · [Official standings](https://roadef.org/challenge/2018/en/finalResults.php).
+ShiftOpt scored **121 points, placing 7th of 20** when added to the organizers' final workbook. The previous pipeline shared last place with zero points. The new pipeline scored on 26 of 30 instances. Its best instance rank was 4 (B2, B4, X1, X2). J28 led the expanded field with 286 points. [Per-instance results](beam.csv) · [Official standings and workbook](https://roadef.org/challenge/2018/en/finalResults.php).
 
-The default pipeline runs three stages in order.
+The default pipeline runs four stages.
 
-1. `strips` uses `shiftopt.select_candidates` to pack stack prefixes in the largest clear band of a strip. Each selection has a 40 ms budget, so baseline results may vary.
-2. `shelves` builds a fresh plan using several items per row across defect-free bands. It beat the strip constructor on 28 instances.
-3. `repair` keeps the prefix of the best plan and rebuilds its last four plates using more candidate widths. It improved the incumbent on 16 instances.
+1. `strips` uses `shiftopt.select_candidates` to pack ordered stack prefixes. Each selection has a 40 ms budget.
+2. `shelves` builds an independent plan with multiple items per row.
+3. `repair` rebuilds the last four plates of the best plan.
+4. `beam` searches item placements one at a time. At each depth it keeps alternative partial layouts ranked by estimated waste, allowing the active strip to widen as rows grow. It tries beam widths of 12, 48 and 128 under the shared deadline.
 
-Set the order with `--stages strips shelves repair` and the shared time budget with `--seconds 170`. On a pinned Intel core, median solve time was 7.77 s and the maximum was 23.46 s, including input and output and excluding interpreter startup and checking. We used the same final waste for both contest limits and ranked it against each team's weighted waste (10% at three minutes and 90% at one hour). The top ten earn points on each instance. [Competition rules](https://roadef.org/challenge/2018/files/Challenge_Rules.pdf).
+Compared with the archived three-stage run, waste fell on 29 instances, with a median reduction of 52.6% across all 30. [Three-stage results](pipeline.csv) · [Original strip baseline](benchmark.csv).
+
+The official checker accepted all 30 final plans. Wall time on one pinned Intel Core i7-10750H core included Python startup and file I/O, with a median of 23.06 s and a maximum of 167.90 s. All runs finished within three minutes. We used the same plan for both time limits and compared its waste with each team's weighted result (10% at three minutes and 90% at one hour). We recalculated the top-ten points for every team after adding ShiftOpt. [Competition rules](https://roadef.org/challenge/2018/files/Challenge_Rules.pdf).
+
+Choose a subset or order with `--stages`. The default shared search budget is `--seconds 170`.
 
 Install the package from the repository root with `python -m pip install .`. From this directory, generate a plan and check it using the organizers' C++ checker and GNU g++ on Linux. [Official data and checker](https://roadef.org/challenge/2018/en/instances.php).
 
