@@ -13,7 +13,7 @@ from scipy.sparse.csgraph import dijkstra
 from shiftopt import Model, MINIMIZE, quicksum
 
 
-def propose(graph, jobs, scenario, loads, via, period, rng, change_limit=None):
+def propose(graph, jobs, scenario, loads, via, period, rng, change_limit=None, offset=0):
     """Build a pool of detours and select a compatible subset for one period."""
     blocked = next((x["links"] for x in scenario["interventions"] if x["t"] == period), [])
     blocked = set(blocked)
@@ -41,7 +41,10 @@ def propose(graph, jobs, scenario, loads, via, period, rng, change_limit=None):
     volume = np.array([j["v"][period] for j in jobs])
     pool = []
     seen = set()
-    for edge in np.argsort(-load)[:8]:
+    target_edges = np.argsort(-load)[offset:offset + 8]
+    if not len(target_edges):
+        return via
+    for edge in target_edges:
         u, v = a[edge], b[edge]
         for left, right in ((s, via), (via, t)):
             crosses = dist[left, u] + weight[edge] + dist[v, right] == dist[left, right]
@@ -83,7 +86,7 @@ def propose(graph, jobs, scenario, loads, via, period, rng, change_limit=None):
         new_load = load[i].item() + quicksum(by_link.get(i, []))
         model.addConstr(peak >= new_load)
         over = model.addVar(lb=0)
-        model.addConstr(over >= new_load - .75 * load.max())
+        model.addConstr(over >= new_load - .75 * load[target_edges[0]])
         excess.append(over)
     model.setObjective(peak + .03 * quicksum(excess), MINIMIZE)
     model.setStart(zip(variables, np.zeros(len(pool))))
@@ -130,7 +133,8 @@ def solve(folder, name, checker, output, rounds, period_only=False):
             if period_only:
                 budgets = [x["value"] for x in scenario["budget"] if x["t"] in (period, period + 1)]
                 limit = max(1, min(budgets, default=4) // 4)
-            moves = propose(graph, jobs, scenario, loads, via[period], period, rng, limit)
+            moves = propose(graph, jobs, scenario, loads, via[period], period, rng, limit,
+                            8 * (step % 4) if period_only else 0)
             trial = via.copy()
             if period_only:
                 trial[period] = moves
