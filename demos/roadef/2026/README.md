@@ -1,28 +1,41 @@
 # ROADEF/EURO 2026 · Keep the Flow
 
-The search builds a route set shared across periods, then refines it for each period within the reconfiguration budget.
+ShiftOpt produced feasible plans for all 56 published instances. The official checker accepted 20 from set A and 12 each from B, C, and X. The benchmark records the peak link load, number of explicit routes, solution hash, and available comparisons with competitors. [Per-instance results](benchmark.csv).
 
-After installing `.[roadef]`, run the commands from this directory. For setX-02 and setX-03, change `case_id` and replace `solve.py` with `run_static.py`, which stores identical routing-table rows once.
+| Phase | Instances | ShiftOpt points | Rank if included | Winner |
+|---|---:|---:|---|---|
+| Sprint (A) | 20 | 0 | Joint 30th of 54 | S22, 266 points |
+| Qualification (X) | 12 | 0 | Joint 31st of 74 | S33, 153 points |
+
+Each instance awards one point for 15th place and up to 15 points for first. The checker sorts link loads in descending order for lexicographic comparison. Where published comparisons leave a rank interval, both ends give the same score. The organizers publish separate standings for A and X. B and C are development sets. The final evaluation uses set Y, scheduled for February 2027. [Official datasets and schedule](https://gitlab.com/Orange-OpenSource/network-optimization-tools/challenge-roadef-2026/-/tree/8362c373f3dba5733af02f30ab01160afa089b41) · [Sprint standings](https://gitlab.com/Orange-OpenSource/network-optimization-tools/challenge-roadef-2026/-/tree/8362c373f3dba5733af02f30ab01160afa089b41/sprint_results) · [Qualification standings](https://gitlab.com/Orange-OpenSource/network-optimization-tools/challenge-roadef-2026/-/tree/8362c373f3dba5733af02f30ab01160afa089b41/qualification_results).
+
+## Reproduce a plan
+
+Install `.[roadef]` from the repository root. Run from this directory with official checker v1.2.4. The sparse search uses ShiftOpt to choose waypoint changes near congested links. It keeps a plan when the checker confirms feasibility and a better load vector. [Checker downloads](https://gitlab.com/Orange-OpenSource/network-optimization-tools/challenge-roadef-2026/-/releases).
 
 ```sh
 export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 NUMBA_NUM_THREADS=1
 work=$(mktemp -d)
+case_id=setX-04
+python sparse_search.py data "$case_id" ./checker124 "$work/plan.json"
+```
+
+For rows marked `period`, append `--period-only --rounds 12`. The three original qualification runs use a static route pool followed by per-period refinement. Use `solve.py` for the `dense` row and `run_static.py` for the two `shared` rows.
+
+```sh
 case_id=setX-01
 python solve.py data "$case_id" --seconds 120 --output "$work/static.json"
 python refine.py data "$case_id" "$work/static.json" "$work/plan.json"
-checker124 --net "data/$case_id-net.json" --tm "data/$case_id-tm.json" \
+```
+
+## Check and rank a plan
+
+Use checker v1.2.4 with the qualification results for X. For the sprint, use checker v1.2.2 and the corresponding files from `sprint_results/`.
+
+```sh
+./checker124 --net "data/$case_id-net.json" --tm "data/$case_id-tm.json" \
   --scenario "data/$case_id-scenario.json" --srpaths "$work/plan.json" \
   --max-decimal-places 6 > "$work/check.json"
 python rank.py "$case_id" "$work/check.json" qualification_results/readme.md \
   qualification_results/log qualification_results/loads_vector.csv
 ```
-
-The inputs in `data/` come from snapshot `8362c373`. The organizers provide checker v1.2.4 and the files used by `rank.py`. [Official materials and checker](https://roadef.org/challenge/2026/en/material.php) · [Qualification results](https://gitlab.com/Orange-OpenSource/network-optimization-tools/challenge-roadef-2026/-/tree/8362c373f3dba5733af02f30ab01160afa089b41/qualification_results).
-
-The checker accepted all three plans in the original benchmark. Each rank shows where our plan would place among the published qualification results for that instance. Link loads are sorted from highest to lowest and compared lexicographically.
-
-| Instance | Rank | Leader | First differing link load (ours / leader) |
-|---|---:|---|---:|
-| setX-01 | 36 | J156 | #1 · 38.8174% / 38.8170% |
-| setX-02 | 46 | J156 | #8 · 33.4454% / 33.1240% |
-| setX-03 | 46 | S33 | #2 · 40.6091% / 34.6417% |

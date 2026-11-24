@@ -55,16 +55,27 @@ indices = Counter()
 for t, values in known.items():
     for i, value in enumerate(ours):
         if i not in values:
-            raise ValueError(f"Insufficient public evidence for {t} at component {i+1}")
+            outcomes[t] = "unknown"
+            break
         if values[i] != value:
             outcomes[t] = "better" if values[i] < value else "worse"
             indices[i+1] += 1
             break
     else:
         outcomes[t] = "tied"
+# The published order also resolves teams on either side of a known comparison.
+last_better = max((int(ranks[t]) for t in scored if outcomes[t] == "better"), default=0)
+first_worse = min((int(ranks[t]) for t in scored if outcomes[t] == "worse"), default=len(scored)+1)
+for t in scored:
+    if outcomes[t] == "unknown":
+        if int(ranks[t]) <= last_better:
+            outcomes[t] = "better"
+        elif int(ranks[t]) >= first_worse:
+            outcomes[t] = "worse"
 first_difference = next((i for i, (our, best) in enumerate(zip(ours, reference)) if our != best), None)
 counts = Counter(outcomes.values())
-print(json.dumps(dict(instance=args.instance, rank=1+counts["better"], official_teams=len(ranks),
+print(json.dumps(dict(instance=args.instance, rank=None if counts["unknown"] else 1+counts["better"],
+                      rank_min=1+counts["better"], rank_max=1+counts["better"]+counts["unknown"], official_teams=len(ranks),
                       ranked_teams=len(scored), better=counts["better"], worse=counts["worse"],
                       tied=counts["tied"], invalid=len(ranks)-len(scored),
                       peak=str(ours[0]), best_peak=str(reference[0]), best_team=winner,
