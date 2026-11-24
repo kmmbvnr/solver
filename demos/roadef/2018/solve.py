@@ -3,9 +3,10 @@ import argparse
 import csv
 from collections import defaultdict
 from pathlib import Path
+from time import monotonic
 
 import numpy as np
-from shiftopt import select_candidates
+from shiftopt import run_pipeline, select_candidates
 
 
 def records(path):
@@ -42,10 +43,8 @@ def pack(stacks, width, height, trim, min_row):
     return [candidates[i] for i in choice.selected]
 
 
-def solve(folder, name, params, output):
+def read_problem(folder, name, params):
     settings = {k: int(v) for k, v in list(records(params))[1:]}
-    W, H = settings["widthPlates"], settings["heightPlates"]
-    trim = settings["minWaste"]
     stacks = defaultdict(list)
     for row in list(records(folder/f"{name}_batch.csv"))[1:]:
         item, w, h, key, seq = map(int, row)
@@ -56,6 +55,14 @@ def solve(folder, name, params, output):
     for row in list(records(folder/f"{name}_defects.csv"))[1:]:
         _, plate, x, y, w, h = (int(float(v)) for v in row)
         defects[plate].append((x, y, x+w, y+h))
+    return settings, dict(stacks), defects
+
+
+def strips(problem, deadline):
+    settings, original, defects = problem
+    W, H = settings["widthPlates"], settings["heightPlates"]
+    trim = settings["minWaste"]
+    stacks = {key: list(items) for key, items in original.items()}
     nodes = []
 
     def node(x, y, w, h, kind, depth, parent):
@@ -67,6 +74,8 @@ def solve(folder, name, params, output):
         root = node(0, 0, W, H, -2, 0, "")
         x = 0
         while stacks and W-x >= settings["min1Cut"]:
+            if monotonic() >= deadline:
+                return None
             widths = sorted({v for items in stacks.values() for v in items[0][2:]
                              if settings["min1Cut"] <= v <= min(W-x, settings["max1Cut"])})
             if len(widths) > 4:
@@ -120,11 +129,46 @@ def solve(folder, name, params, output):
         if not stacks:
             break
     if stacks:
-        raise ValueError("Plate supply exhausted")
+        return None
+    return nodes
+
+
+def write_plan(nodes, output):
     with output.open("w", newline="") as f:
         writer = csv.writer(f, delimiter=";", lineterminator="\n")
         writer.writerow("PLATE_ID NODE_ID X Y WIDTH HEIGHT TYPE CUT PARENT".split())
         writer.writerows(nodes)
+
+
+def solve(folder, name, params, output, stages=("strips", "shelves", "repair"), seconds=170, on_step=None):
+    from shelves import build_shelves
+
+    problem = read_problem(folder, name, params)
+    settings = problem[0]
+    def used_width(nodes):
+        last_plate = nodes[-1][0]
+        residual = nodes[-1][4] if nodes[-1][6] == -3 else 0
+        return (last_plate + 1) * settings["widthPlates"] - residual
+
+    def baseline(plan, deadline):
+        return strips(problem, deadline)
+
+    def shelves(plan, deadline):
+        return build_shelves(problem, deadline)
+
+    def repair(plan, deadline):
+        if plan is None:
+            return None
+        # Reopen the last four plates. Their old cuts can be replaced together.
+        first = max(0, plan[-1][0] - 3)
+        prefix = [row for row in plan if row[0] < first]
+        return build_shelves(problem, deadline, prefix=prefix, fine=True)
+
+    operators = {"strips": baseline, "shelves": shelves, "repair": repair}
+    result = run_pipeline([operators[s] for s in stages], used_width, seconds=seconds, on_step=on_step)
+    if result is None:
+        raise ValueError("No complete cutting plan found within the budget")
+    write_plan(result, output)
 
 
 if __name__ == "__main__":
@@ -132,5 +176,8 @@ if __name__ == "__main__":
     parser.add_argument("folder", type=Path)
     parser.add_argument("instance")
     parser.add_argument("output", type=Path)
+    parser.add_argument("--stages", nargs="+", choices=("strips", "shelves", "repair"),
+                        default=("strips", "shelves", "repair"))
+    parser.add_argument("--seconds", type=float, default=170)
     args = parser.parse_args()
-    solve(args.folder, args.instance, Path(__file__).parent/"data/global_param.csv", args.output)
+    solve(args.folder, args.instance, Path(__file__).parent/"data/global_param.csv", args.output, args.stages, args.seconds)

@@ -1,10 +1,14 @@
 # ROADEF/EURO 2018 · Glass Cutting
 
-The official checker accepted all 30 final instances (15 B and 15 X). ShiftOpt scored **0 points**, tying S4, S22 and S27 behind the 16 teams with points. With ShiftOpt added, the organizers' workbook labels this four-way tie **20th of 20**. J28 won with 286 points. Our best individual results were 13th on B2 and B8. [Per-instance results](benchmark.csv) · [Official results and workbook](https://roadef.org/challenge/2018/en/finalResults.php).
+The official checker accepted all three stage proposals on each of the 30 final instances. Compared with the strip constructor in the same run, the pipeline reduced waste on 29 instances, with a median reduction of 26.6% across all 30. The best instance rank improved from 13th in the archived baseline to 12th. ShiftOpt still scored **0 points**. The workbook labels the four-way tie for last **20th of 20**. J28 won with 286 points. [Pipeline results](pipeline.csv) · [Archived baseline](benchmark.csv) · [Official standings](https://roadef.org/challenge/2018/en/finalResults.php).
 
-The adapter calls the existing `shiftopt.select_candidates` with its default strategy and a 40 ms budget per call. It tries up to four strip widths at each position. Within the largest defect-free horizontal band, each candidate is an ordered prefix of one stack. The solver maximizes item area subject to the height limit and one prefix per stack. This baseline uses only part of the permitted cutting patterns.
+The default pipeline runs three stages in order.
 
-On one pinned Intel CPU per process, median wall time was 9.10 s and the maximum was 23.46 s, including interpreter startup. Every run finished within three minutes. We used its final waste for both official time limits. The instance rank compares that value to each team's weighted waste (10% at three minutes and 90% at one hour). Only the first ten places on an instance earn points. [Competition rules](https://roadef.org/challenge/2018/files/Challenge_Rules.pdf).
+1. `strips` uses `shiftopt.select_candidates` to pack stack prefixes in the largest clear band of a strip. Each selection has a 40 ms budget, so baseline results may vary.
+2. `shelves` builds a fresh plan using several items per row across defect-free bands. It beat the strip constructor on 28 instances.
+3. `repair` keeps the prefix of the best plan and rebuilds its last four plates using more candidate widths. It improved the incumbent on 16 instances.
+
+Set the order with `--stages strips shelves repair` and the shared time budget with `--seconds 170`. On a pinned Intel core, median solve time was 7.77 s and the maximum was 23.46 s, including input and output and excluding interpreter startup and checking. We used the same final waste for both contest limits and ranked it against each team's weighted waste (10% at three minutes and 90% at one hour). The top ten earn points on each instance. [Competition rules](https://roadef.org/challenge/2018/files/Challenge_Rules.pdf).
 
 Install the package from the repository root with `python -m pip install .`. From this directory, generate a plan and check it using the organizers' C++ checker and GNU g++ on Linux. [Official data and checker](https://roadef.org/challenge/2018/en/instances.php).
 
