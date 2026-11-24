@@ -39,3 +39,5 @@ Use checker v1.2.4 with the qualification results for X. For the sprint, use che
 python rank.py "$case_id" "$work/check.json" qualification_results/readme.md \
   qualification_results/log qualification_results/loads_vector.csv
 ```
+
+A pilot tried 12 waypoint proposals from each saved plan on A01–A05 and X07, keeping one or two plans per layer for three layers. Both widths improved the checker's lexicographic load vector on all six instances. Width 1 beat width 2 on A02, A03 and A05 and tied on the others. Both lowered the peak on X07 from 0.437521 to 0.368036, moving from 55th to 53rd on that instance. None of these six runs reached the top 15 needed for points.
