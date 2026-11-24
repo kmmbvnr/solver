@@ -17,3 +17,11 @@ cat "$work/AS/report.csv"
 ```
 
 The full final uses 155 instances from `dataset_C_{1,2,3}.zip` and `dataset_X_{1,2,3,4,5}.zip` at the same pinned source. The scientific prize for this edition was awarded in 2024. [Official data](https://roadef.org/challenge/2022/en/instances.php) · [Final standings](https://roadef.org/challenge/2022/en/finalresult.php) · [Schedule](https://roadef.org/challenge/2022/en/calendrier.php).
+
+Pass `--beam-width 1` or `--beam-width 2` to explore adjacent swaps in stack order. On C1/AS, BY and CA, the official checker reported the following costs. The full standings above use the default width of zero.
+
+| C1 instance | Default | Width 1 | Width 2 |
+|---|---:|---:|---:|
+| AS | 3,775,800 | 3,774,000 | 3,772,200 |
+| BY | 22,753,200 | 22,510,200 | 22,423,800 |
+| CA | 2,565,300 | 2,552,700 | 2,552,700 |

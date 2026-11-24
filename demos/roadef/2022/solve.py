@@ -8,7 +8,9 @@ from contextlib import ExitStack
 from itertools import chain, islice, repeat
 from pathlib import Path
 
-from shiftopt import run_pipeline
+from time import monotonic
+
+from shiftopt import beam_search, run_pipeline
 
 
 def records(folder, kind):
@@ -76,7 +78,7 @@ class Load:
         return x, y, length, width
 
 
-def pack_group(rows, truck, ident, limits, combine):
+def pack_group(rows, truck, ident, limits, combine, beam_width=0):
     """Build homogeneous stacks and preserve the identity of every shipped unit."""
     groups = defaultdict(list)
     for r in rows:
@@ -92,12 +94,42 @@ def pack_group(rows, truck, ident, limits, combine):
             r["Max stackability"],
         )
         groups[key if combine else r["Item ident"]].append(r)
-    loads = []
-    load = Load(truck)
-    order = groups.values()
+    order = list(groups.values())
     if combine:
         # Fill long and wide stacks first, before the remaining lanes get fragmented.
         order = sorted(order, key=lambda g: int(g[0]["Length"]) * int(g[0]["Width"]), reverse=True)
+    base = pack_order(order, truck, ident, limits)
+    if not combine or not beam_width or len(base) < 2 or len(order) < 2:
+        return base
+    best = base
+
+    def expand(state):
+        nonlocal best
+        depth, sequence, plan = state
+        yield depth + 1, sequence, plan
+        for i in range(depth, min(len(sequence) - 1, depth + 3)):
+            proposal = list(sequence)
+            proposal[i], proposal[i + 1] = proposal[i + 1], proposal[i]
+            trial = pack_order((order[j] for j in proposal), truck, ident, limits)
+            if len(trial) < len(best):
+                best = trial
+            yield depth + 1, tuple(proposal), trial
+
+    beam_search(
+        (0, tuple(range(len(order))), base),
+        expand,
+        key=lambda state: state[1],
+        priority=lambda state: (len(state[2]), sum(max(load.ends) for load in state[2])),
+        complete=lambda state: state[0] == 3,
+        width=beam_width,
+        deadline=monotonic() + 10,
+    )
+    return best
+
+
+def pack_order(order, truck, ident, limits):
+    loads = []
+    load = Load(truck)
     for group in order:
         r = group[0]
         a, b, h = (int(r[k]) for k in ("Length", "Width", "Height"))
@@ -139,7 +171,7 @@ def pack_group(rows, truck, ident, limits, combine):
     return loads
 
 
-def solve(folder, output, combine=True):
+def solve(folder, output, combine=True, beam_width=0):
     trips, bottom_limit = {}, {}
     eligible = defaultdict(set)
     numeric = "Length Width Height EMmm EMmr CM CJfm CJfc CJfh EM EJhr EJcr EJeh".split()
@@ -181,7 +213,7 @@ def solve(folder, output, combine=True):
                 return pack_group(rows, t, ident, bottom_limit, False)
 
             def consolidate(plan, deadline):
-                return pack_group(rows, t, ident, bottom_limit, True)
+                return pack_group(rows, t, ident, bottom_limit, True, beam_width)
 
             steps = [original, consolidate] if combine else [original]
             for load in run_pipeline(steps, len):
@@ -226,5 +258,7 @@ if __name__ == "__main__":
     parser.add_argument("instance", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--rows-only", action="store_true", help="disable stack consolidation")
+    parser.add_argument("--beam-width", type=int, choices=range(3), default=0,
+                        help="explore alternative stack orders (0 disables search)")
     args = parser.parse_args()
-    solve(args.instance, args.output, not args.rows_only)
+    solve(args.instance, args.output, not args.rows_only, args.beam_width)
