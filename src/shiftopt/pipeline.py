@@ -1,7 +1,9 @@
 """Compose optimization steps in an explicit order, retaining the best candidate."""
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
+from dataclasses import dataclass
+from itertools import islice
 from time import monotonic
-from typing import Protocol, TypeVar
+from typing import Generic, Protocol, TypeVar
 
 Plan = TypeVar("Plan")
 
@@ -12,10 +14,24 @@ class Heuristic(Protocol[Plan]):
         ...
 
 
+@dataclass(frozen=True)
+class StepTrial(Generic[Plan]):
+    step: Heuristic[Plan]
+    accepted: bool
+    elapsed: float
+
+
+class StepPolicy(Protocol[Plan]):
+    def __call__(self, best: Plan | None, history: tuple[StepTrial[Plan], ...],
+                 remaining: float, /) -> Heuristic[Plan] | None:
+        """Choose an available step (possibly again), or None to finish."""
+
+
 def run_pipeline(steps: Iterable[Heuristic[Plan]], score: Callable, *,
                  initial: Plan | None = None, seconds: float = float("inf"),
                  on_step: Callable | None = None,
-                 on_accept: Callable[[Plan], None] | None = None) -> Plan | None:
+                 on_accept: Callable[[Plan], None] | None = None,
+                 policy: StepPolicy[Plan] | None = None, max_steps: int | None = None) -> Plan | None:
     """Minimize an ordered score. Steps share a cooperative monotonic deadline.
 
     on_accept(plan) can checkpoint the first proposal and each strict improvement.
@@ -27,17 +43,44 @@ def run_pipeline(steps: Iterable[Heuristic[Plan]], score: Callable, *,
     deadline = monotonic() + seconds
     best = initial
     best_score = None if best is None else score(best)
-    for step in steps:
+    if max_steps is not None and (type(max_steps) is not int or max_steps < 0):
+        raise ValueError("max_steps must be a nonnegative integer")
+    history = []
+    if policy is not None:
+        if max_steps is None or not isinstance(steps, Sequence):
+            raise ValueError("policy selection requires a finite step sequence and max_steps")
+        available = tuple(steps)
+
+    def scheduled_steps():
+        if policy is None:
+            yield from islice(steps, max_steps)
+            return
+        for _ in range(max_steps):
+            remaining = deadline - monotonic()
+            if remaining <= 0:
+                return
+            chosen = policy(best, tuple(history), remaining)
+            if chosen is None:
+                return
+            if not any(chosen is step for step in available):
+                raise ValueError("policy chose a step outside the supplied sequence")
+            yield chosen
+
+    for step in scheduled_steps():
         started = monotonic()
         if started >= deadline:
             break
         candidate = step(best, deadline)
         previous = best_score
         proposed = None if candidate is None else score(candidate)
-        if candidate is not None and (best is None or proposed < best_score):
+        accepted = candidate is not None and (best is None or proposed < best_score)
+        if accepted:
             best, best_score = candidate, proposed
             if on_accept is not None:
                 on_accept(best)
+        elapsed = monotonic() - started
+        if policy is not None:
+            history.append(StepTrial(step, accepted, elapsed))
         if on_step is not None:
-            on_step(step, previous, proposed, monotonic() - started)
+            on_step(step, previous, proposed, elapsed)
     return best
