@@ -11,7 +11,7 @@ Each instance awards one point for 15th place and up to 15 points for first. The
 
 ## Reproduce a plan
 
-Install `.[roadef]` from the repository root. Run from this directory with official checker v1.2.4. The sparse search uses ShiftOpt to choose waypoint changes near congested links. It keeps a plan when the checker confirms feasibility and a better load vector. [Checker downloads](https://gitlab.com/Orange-OpenSource/network-optimization-tools/challenge-roadef-2026/-/releases).
+Install `.[roadef]` from the repository root. Run from this directory with official checker v1.2.4. The sparse search uses ShiftOpt to choose waypoint changes near congested links. The pipeline starts with default routes. Each round proposes waypoint changes, the checker reports feasibility and link loads, and the pipeline retains lexicographic improvements. The dense and shared static modes use the same pipeline with their internal load estimates. Period refinement starts from a static seed and proposes changes one period at a time. [Checker downloads](https://gitlab.com/Orange-OpenSource/network-optimization-tools/challenge-roadef-2026/-/releases).
 
 ```sh
 export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 NUMBA_NUM_THREADS=1
