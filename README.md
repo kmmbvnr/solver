@@ -6,27 +6,13 @@ Install the solver with `python -m pip install .`. To run the demos, use `python
 
 ## How the solver works
 
-Every demo defines its plan format, scoring function and step order. A step can build a plan from scratch, repair it or refine it. The same pipeline runs all five benchmarks.
+Each demo supplies its steps in execution order and defines how to score a plan. ShiftOpt makes one pass, keeping the first feasible plan and each strict improvement. Each step receives the best plan so far and the shared deadline. When time runs out, the pipeline stops before starting another step.
 
 ```mermaid
-sequenceDiagram
-    participant D as Benchmark demo
-    participant P as ShiftOpt pipeline
-    participant H as Heuristic step
-    participant S as External solver
-
-    D->>P: run_pipeline(steps, score)
-    loop For each step until the deadline
-        P->>H: Best plan so far + deadline
-        Note over H: Can use beam search, bounded flow<br/>or candidate selection
-        opt Step needs a solver
-            H->>S: Submit a subproblem to HiGHS or CP-SAT
-            S-->>H: Subproblem result
-        end
-        H-->>P: Feasible plan or None
-        Note over P: Keep the first plan and each<br/>strict improvement in score
-    end
-    P-->>D: Best plan found or None
+flowchart LR
+    A["Step 1"] -->|best so far| B["Step 2"]
+    B --> C["…"] --> N["Step N"] --> R(["Return best plan"])
+    B -. optional call .-> S["External solver<br/>HiGHS or CP-SAT"]
 ```
 
 ### Example: packing a bag
