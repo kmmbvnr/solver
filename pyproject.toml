@@ -1,10 +1,12 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "shiftopt"
 version = "0.1.0"
+license = "AGPL-3.0-only"
+license-files = ["LICENSE"]
 description = "Embeddable linear optimization and resource-constrained candidate selection"
 requires-python = ">=3.10"
 dependencies = ["highspy>=1.16,<2", "numpy>=1.24", "scipy>=1.11"]

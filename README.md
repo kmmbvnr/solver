@@ -190,3 +190,7 @@ Ranks show where ShiftOpt would place in the published standings.
 ## DIMACS benchmarks
 
 Thirty standalone DIMACS demos across eleven editions compare candidate plans or refine an incumbent through the shared pipeline. [Editions, inputs and results](demos/dimacs/).
+
+## License
+
+ShiftOpt is licensed under the [GNU Affero General Public License, version 3 only](LICENSE). Third-party benchmark data is subject to its original terms.
