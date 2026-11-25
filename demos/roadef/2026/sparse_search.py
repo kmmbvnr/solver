@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import dijkstra
-from shiftopt import Model, MINIMIZE, quicksum, run_pipeline
+from shiftopt import bandit_policy, Model, MINIMIZE, quicksum, run_pipeline
 
 
 def propose(graph, jobs, scenario, loads, via, period, rng, change_limit=None, offset=0):
@@ -153,7 +153,7 @@ def solve(folder, name, checker, output, rounds, period_only=False, policy="fixe
         def load_vector(plan):
             return tuple(sorted((row["sat"] for row in plan[1]), reverse=True))
 
-        if policy not in ("fixed", "alternate", "adaptive") or (period_only and policy != "fixed"):
+        if policy not in ("fixed", "alternate", "adaptive", "bandit") or (period_only and policy != "fixed"):
             raise ValueError("mixed policies require both shared and period moves")
 
         def operator(single_period):
@@ -168,7 +168,13 @@ def solve(folder, name, checker, output, rounds, period_only=False, policy="fixe
         shared, period = operator(False), operator(True)
         moves = max(0, rounds)
         choose = None
-        if policy == "adaptive":
+        gain = None
+        if policy == "bandit":
+            steps = [default_routes, shared, period]
+            choose = bandit_policy([shared, period], construct=default_routes, exploration=0.15)
+            def gain(old, new):
+                return next((a - b) / a for a, b in zip(old, new) if a != b)
+        elif policy == "adaptive":
             steps = [default_routes, shared, period]
 
             def choose(best, history, remaining):
@@ -184,7 +190,7 @@ def solve(folder, name, checker, output, rounds, period_only=False, policy="fixe
             steps = [default_routes, *((shared, period)[i % 2] for i in range(moves))]
         else:
             steps = [default_routes] + [period if period_only else shared] * moves
-        run_pipeline(steps, load_vector, policy=choose, max_steps=moves + 1,
+        run_pipeline(steps, load_vector, policy=choose, gain=gain, max_steps=moves + 1,
                      on_accept=lambda plan: output.write_bytes(plan[2]))
 
 
@@ -196,7 +202,7 @@ if __name__ == "__main__":
     parser.add_argument("output", type=Path)
     parser.add_argument("--rounds", type=int, default=6)
     parser.add_argument("--period-only", action="store_true", help="optimize one period per iteration")
-    parser.add_argument("--policy", choices=("fixed", "alternate", "adaptive"), default="fixed")
+    parser.add_argument("--policy", choices=("fixed", "alternate", "adaptive", "bandit"), default="fixed")
     args = parser.parse_args()
     if args.period_only and args.policy != "fixed":
         parser.error("--period-only applies to the fixed policy")

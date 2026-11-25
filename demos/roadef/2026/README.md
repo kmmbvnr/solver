@@ -55,3 +55,5 @@ All four modes started from default routing and made 12 proposals per instance. 
 | Fixed alternation | 15 / 1 / 4 | 7 / 0 / 3 |
 
 The adaptive run earned 0 sprint points. Its closest result was A11, between 18th and 21st. These runs used equal proposal counts and had no wall-clock limit.
+
+For a learning baseline, pass `--policy bandit --rounds 12`. UCB tries both operators and balances mean reward against an exploration bonus (coefficient 0.15). For accepted moves, the reward is the relative reduction at the first differing position of the sorted load vector. With the same seed, starting plan and 12 proposals, UCB beat the manual adaptive policy on 3 of 20 sprint instances, tied on 1 and lost on 16. On A11–A20 the counts were 2 / 0 / 8. Checker v1.2.2 accepted all 40 plans.
