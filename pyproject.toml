@@ -12,6 +12,8 @@ requires-python = ">=3.10"
 dependencies = ["highspy>=1.16,<2", "numpy>=1.24", "scipy>=1.11"]
 
 [project.optional-dependencies]
+mip-quadratic = ["pyscipopt>=6,<7"]
+mip-gpu = ["torch>=2.4,<3"]
 dimacs-conic = ["cvxpy>=1.5,<2", "scs>=3.2,<4"]
 roadef = ["ijson>=3.2,<4", "numba>=0.61", "ortools>=9.12,<10"]
 
