@@ -178,6 +178,7 @@ For assignments that block one another, build a step with `ejection_chain(start,
 - `ResumableAnnealing(move, score, attempts=3000, cycle_attempts=50000, temperature=8, seed=1)` gives control back to the pipeline after each burst. Reuse the same step within a run to keep the current point, best plan, random streams and cooling position. At the cycle boundary it restarts from the best plan with the next seed. Construct a fresh step for each independent run.
 - `neighborhood_search` runs destroy-and-repair trials with strict or Metropolis acceptance.
 - `move_sequence` passes intermediate proposals between moves and scores the final plan once.
+- `assignment_constructor(start, moves_per_start=..., starts=..., conflict_weight=..., seed=...)` builds complete assignments by placing items and reinserting the items they displace. The adapter supplies an empty state, an item order, eligible choices and blocker bit masks. A positive conflict weight penalizes repeated evictions by the same item and choice. The [ITC timetable](demos/itc/2007/) and [DIMACS coloring](demos/dimacs/1992/) demos share this step.
 - `reassignment_search` tries transfers, rebuilds the affected assignments and compares full plan costs.
 - `bounded_best_first` searches across depths with a bounded frontier, retaining improvements across restarts.
 - `beam_search` keeps the best partial plans at each search depth.

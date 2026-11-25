@@ -6,7 +6,7 @@ from functools import partial
 from heapq import heappop, heappush
 from time import monotonic
 
-from shiftopt import run_pipeline
+from shiftopt import assignment_constructor, run_pipeline
 
 
 graph = []
@@ -90,11 +90,60 @@ def score(plan):
     return max(plan, default=0)
 
 
-def solve(stream, seconds=float("inf")):
+class ColoringState:
+    def __init__(self, neighbors, limit):
+        self.neighbors = neighbors
+        self.colors = [0] * len(neighbors)
+        self.classes = [0] * (limit + 1)
+
+    def options(self, vertex, rng):
+        colors = list(range(1, len(self.classes)))
+        rng.shuffle(colors)
+        for color in colors:
+            yield color, self.neighbors[vertex] & self.classes[color]
+
+    def remove(self, vertex):
+        self.classes[self.colors[vertex]] ^= 1 << vertex
+        self.colors[vertex] = 0
+
+    def assign(self, vertex, color):
+        self.classes[color] |= 1 << vertex
+        self.colors[vertex] = color
+
+    def finish(self):
+        return self.colors
+
+
+def start_coloring(neighbors, limit, rng):
+    order = list(range(len(neighbors)))
+    rng.shuffle(order)
+    order.sort(key=lambda v: neighbors[v].bit_count())
+    return ColoringState(neighbors, limit), order
+
+
+def fewer_colors(plan, deadline):
+    if not plan:
+        return plan
+    neighbors = [sum(1 << u for u in row) for row in graph]
+    limit = score(plan) - 1
+    while limit > 0 and monotonic() < deadline:
+        build = assignment_constructor(partial(start_coloring, neighbors, limit), moves_per_start=8 * len(plan),
+                                       starts=8, conflict_weight=1, seed=1)
+        candidate = build(plan, deadline)
+        if candidate is None:
+            break
+        plan, limit = candidate, score(candidate) - 1
+    return plan
+
+
+def solve(stream, seconds=float("inf"), *, reconstruct=False):
     global graph
     graph = read_graph(stream)
 
-    plan = run_pipeline([by_degree, saturation, by_color_class], score, seconds=seconds)
+    steps = [by_degree, saturation, by_color_class]
+    if reconstruct:
+        steps.append(fewer_colors)
+    plan = run_pipeline(steps, score, seconds=seconds)
     if plan is None:
         raise ValueError("no feasible solution returned within the search budget")
     return {"pipeline_score": score(plan), "solution": plan}
@@ -104,6 +153,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("instance", type=Path, nargs="?", default=Path(__file__).with_name("example.txt"))
     parser.add_argument("--seconds", type=float, default=float("inf"), help="cooperative pipeline budget")
+    parser.add_argument("--reconstruct", action="store_true", help="try successively smaller color limits")
     args = parser.parse_args()
     with args.instance.open() as stream:
-        print(json.dumps(solve(stream, args.seconds), allow_nan=False))
+        print(json.dumps(solve(stream, args.seconds, reconstruct=args.reconstruct), allow_nan=False))

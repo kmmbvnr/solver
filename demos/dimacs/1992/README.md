@@ -4,6 +4,14 @@ Read a DIMACS `.col` edge list. Try largest-degree first, saturation-degree colo
 
 The triangle in the example requires three colors. On `queen8_8.col` the pipeline used 12 colors, compared with the published value of 9. All 728 undirected edges were checked. [Source](https://mat.tepper.cmu.edu/COLOR/instances.html).
 
+With `--reconstruct`, the shared assignment constructor tries to color the
+graph with one fewer color than the incumbent. Assigning a color displaces
+adjacent vertices of that color. Conflicts go back on the pending list. Each
+color limit allows eight starts of at most eight placements per vertex.
+On the same queen8_8 input and seed 1, reconstruction reduced 12 colors to
+10, both with and without eviction history. Both colorings passed all 728 edge
+checks. The published value is 9.
+
 From the repository root, run `python demos/dimacs/1992/solve.py` for the included example or append the path to an input file.
 
 ## More tracks
