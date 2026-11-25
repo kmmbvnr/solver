@@ -70,7 +70,9 @@ def construct(data, seconds):
     }
 
 
-def solve(instance, output, seconds, refine_seconds, repair_first=False, margins=True, paired=False):
+def solve(instance, output, seconds, refine_seconds, repair_first=False, margins=True, paired=False, chain_length=2):
+    if chain_length < 2:
+        raise ValueError("chain length must be at least two")
     data = read(instance)
     scenario_bytes = sum(
         v.nbytes
@@ -89,8 +91,10 @@ def solve(instance, output, seconds, refine_seconds, repair_first=False, margins
         return None
 
     def improve_dates(plan, deadline):
-        search = pair_search if paired else refine
-        return search(data, plan, min(deadline, monotonic() + refine_seconds))
+        limit = min(deadline, monotonic() + refine_seconds)
+        if paired or chain_length > 2:
+            return pair_search(data, plan, limit, chain_length)
+        return refine(data, plan, limit)
 
     steps = []
     if not repair_first and scenario_bytes <= 750_000_000:
@@ -121,6 +125,7 @@ if __name__ == "__main__":
         help="use fixed conflict penalties and original capacities",
     )
     parser.add_argument("--paired", action="store_true", help="refine by swapping two start dates at once")
+    parser.add_argument("--chain-length", type=int, default=2, help="enable longer exchanges above two jobs")
     args = parser.parse_args()
     solve(
         args.instance,
@@ -130,4 +135,5 @@ if __name__ == "__main__":
         args.repair_first,
         not args.plain_repair,
         args.paired,
+        args.chain_length,
     )

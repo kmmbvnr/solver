@@ -1,4 +1,4 @@
-"""Reassign two start dates together, keeping the rest of the schedule fixed."""
+"""Rotate start dates among interventions, keeping the rest of the schedule fixed."""
 from functools import lru_cache
 from time import monotonic
 from typing import NamedTuple
@@ -6,7 +6,7 @@ from typing import NamedTuple
 import numpy as np
 
 from repair import compile_options
-from shiftopt import neighborhood_search, run_pipeline
+from shiftopt import ejection_chain, neighborhood_search, run_pipeline
 
 
 class State(NamedTuple):
@@ -16,7 +16,9 @@ class State(NamedTuple):
     cost: float
 
 
-def pair_search(data, schedule, deadline):
+def pair_search(data, schedule, deadline, chain_length=2):
+    if chain_length < 2:
+        raise ValueError("chain length must be at least two")
     jobs = data["Interventions"]
     names = list(jobs)
     if len(names) < 2:
@@ -53,19 +55,20 @@ def pair_search(data, schedule, deadline):
             totals[t] += vec
     initial = State(starts, loads, totals, sum(cost(t, v) for t, v in enumerate(totals)))
 
-    def destroy(state, rng):
-        a, b = rng.sample(range(len(names)), 2)
-        return state, a, b
+    def start(state, rng):
+        return tuple(rng.sample(range(len(names)), 2))
 
-    def repair(partial, rng, deadline):
-        state, a, b = partial
-        sa, sb = state.starts[a], state.starts[b]
-        if sa == sb or sb >= offsets[a + 1] - offsets[a] or sa >= offsets[b + 1] - offsets[b]:
-            return None
+    def rotate(state, chain):
         proposed = list(state.starts)
-        proposed[a], proposed[b] = sb, sa
+        for i, job in enumerate(chain):
+            start = state.starts[chain[(i + 1) % len(chain)]]
+            if start >= offsets[job + 1] - offsets[job]:
+                return None
+            proposed[job] = start
+        if proposed[chain[0]] == state.starts[chain[0]]:
+            return None
         load = state.loads.copy()
-        for j in (a, b):
+        for j in chain:
             old, new = offsets[j] + state.starts[j], offsets[j] + proposed[j]
             update_load(load, old, -1)
             update_load(load, new, 1)
@@ -77,7 +80,7 @@ def pair_search(data, schedule, deadline):
         if np.any(load < lo - 1e-7) or np.any(load > hi + 1e-7):
             return None
         changes = {}
-        for j in (a, b):
+        for j in chain:
             for start, sign in ((state.starts[j], -1), (proposed[j], 1)):
                 for t, v in risks(j, start).items():
                     if t not in changes:
@@ -90,6 +93,26 @@ def pair_search(data, schedule, deadline):
             risk[t] = v
         return State(tuple(proposed), load, risk, total)
 
-    step = neighborhood_search(destroy, repair, lambda s: s.cost, attempts=100_000, seed=7)
-    best = run_pipeline([step], lambda s: s.cost, initial=initial, seconds=max(0, deadline - monotonic()))
+    def extend(state, chain, rng):
+        # Give the last displaced job a date currently assigned to another job.
+        last = chain[-1]
+        for other in rng.sample(range(len(names)), min(8, len(names))):
+            if (other not in chain and state.starts[other] != state.starts[last]
+                    and state.starts[other] < offsets[last + 1] - offsets[last]):
+                yield (*chain, other)
+
+    def score(state):
+        return state.cost
+
+    if chain_length == 2:
+        def destroy(state, rng):
+            return state, start(state, rng)
+        def repair(partial, rng, deadline):
+            return rotate(*partial)
+        step = neighborhood_search(destroy, repair, score, attempts=100_000, seed=7)
+    else:
+        # Opening a pair displaces one job. Each extension displaces one more.
+        step = ejection_chain(start, extend, rotate, score, max_depth=chain_length - 1,
+                              max_nodes=16, attempts=100_000, seed=7)
+    best = run_pipeline([step], score, initial=initial, seconds=max(0, deadline - monotonic()))
     return dict(zip(names, best.starts))
