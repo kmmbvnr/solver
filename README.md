@@ -177,10 +177,19 @@ For assignments that block one another, build a step with `ejection_chain(start,
 
 ## ROADEF/EURO benchmarks
 
-Ranks show where ShiftOpt would place in the published standings.
+The demos cover all 14 editions in the [ROADEF archive](https://roadef.org/index.php/app/pages/le-challenge-roadef). Historical results identify the instance or set checked. Ranks are retrospective comparisons with published standings.
 
-| Year | Problem | Rank |
+| Year | Problem | Result |
 |---|---|---|
+| [1999](demos/roadef/1999/) | Equipment inventory | 16/16 public plans checked. I808nb cost 1,238,300 (reference 1,288,400) |
+| [2001](demos/roadef/2001/) | Frequency assignment | fapp01: relaxation level 4, zero mandatory violations |
+| [2003](demos/roadef/2003/) | Earth observation scheduling | 10/10 Set A plans accepted. Gain 10,423,440 on 2_9_36 |
+| [2005](demos/roadef/2005/) | Car sequencing | 064: 284,648 (input order 284,650) |
+| [2007](demos/roadef/2007/) | Technician scheduling | 10/10 Set A plans accepted. data1 cost 7,500 (reference 2,490) |
+| [2009](demos/roadef/2009/) | Airline disruption recovery | A05 cost 40,275,051 |
+| [2010](demos/roadef/2010/) | Power generation and outages | data0: 0.081% above the best qualification cost, built from scratch |
+| [2012](demos/roadef/2012/) | Machine reassignment | a1_1 cost 44,306,804 (initial 49,528,750) |
+| [2014](demos/roadef/2014/) | Rolling stock management | B1 cost 2,555,400 (winning team's B1 cost 699,749.94) |
 | [2016](demos/roadef/2016/) | Inventory routing | 4th of 8 with B+X scores |
 | [2018](demos/roadef/2018/) | Glass cutting | 7th of 20 |
 | [2020](demos/roadef/2020/) | Maintenance scheduling | 13th of 14 |
