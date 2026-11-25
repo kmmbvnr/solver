@@ -1,6 +1,6 @@
 # DIMACS 1998
 
-From the repository root, run `python demos/dimacs/1998/approximate_neighbors/solve.py`. Each script accepts an input path and `--seconds`. [Edition and problem definitions](https://archive.dimacs.rutgers.edu/Challenges/Sixth/).
+From the repository root, run `python demos/dimacs/1998/approximate_neighbors/solve.py`. Each script accepts an input path and `--seconds`. [Edition and problem definitions](https://archive.dimacs.rutgers.edu/archive/Challenges/Sixth/).
 
 | Track | Pipeline | Local result |
 |---|---|---|
