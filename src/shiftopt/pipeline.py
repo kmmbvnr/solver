@@ -31,10 +31,13 @@ def run_pipeline(steps: Iterable[Heuristic[Plan]], score: Callable, *,
                  initial: Plan | None = None, seconds: float = float("inf"),
                  on_step: Callable | None = None,
                  on_accept: Callable[[Plan], None] | None = None,
+                 recombine: Callable[[Plan, Plan, float], Plan | None] | None = None,
                  policy: StepPolicy[Plan] | None = None, max_steps: int | None = None) -> Plan | None:
     """Minimize an ordered score. Steps share a cooperative monotonic deadline.
 
     on_accept(plan) can checkpoint the first proposal and each strict improvement.
+    recombine(best, proposal, deadline) can assemble a child before selection.
+    The best of both parents and the child survives.
     Constructors accept an empty incumbent. A repair step may decline a move.
     on_step(step, old_score, proposed_score, elapsed) observes every completed step.
     """
@@ -73,6 +76,13 @@ def run_pipeline(steps: Iterable[Heuristic[Plan]], score: Callable, *,
         candidate = step(best, deadline)
         previous = best_score
         proposed = None if candidate is None else score(candidate)
+        if (recombine is not None and best is not None and candidate is not None
+                and candidate is not best and monotonic() < deadline):
+            child = recombine(best, candidate, deadline)
+            if child is not None:
+                child_score = score(child)
+                if child_score < proposed:
+                    candidate, proposed = child, child_score
         accepted = candidate is not None and (best is None or proposed < best_score)
         if accepted:
             best, best_score = candidate, proposed

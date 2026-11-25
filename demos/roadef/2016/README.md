@@ -16,3 +16,7 @@ Pass the input XML and `plan.xml` to the official checker as two arguments.
 The official checker accepted all 20 default plans with HiGHS solve calls disabled. The B+X score was **8.8138 (4th of 10 if included)**. Lower is better. The original LP/MIP pipeline scored 8.7121, also fourth. Compared with that run, one instance improved, four tied and fifteen had higher costs per unit delivered. On the same twenty fixed schedules, the flow and LP quantity optima agreed within 0.00000001 kg. [Per-instance results](benchmark.csv) · [Final standings](https://roadef.org/challenge/2016/en/finalResults.php).
 
 The default run took a median of 4.64 seconds and a maximum of 55.39 seconds on a Mac with two instances running concurrently. The original timings were measured on one Intel core.
+
+With `--recombine-seconds 3`, the last stage builds a second calendar plan (seed 17, up to 8 seconds), pools complete routes from both plans and gives HiGHS 3 seconds to select compatible routes and rebalance deliveries. Both parents remain eligible.
+
+On 12 final instances (13–19 and 24–28), the official checker accepted every pooled result. Pooling beat the better of two separately optimized parents on nine and tied on three within 1e-9. Each individual pool solve also received 3 seconds. On instance 25, the cost per unit fell from 0.018602 for the better separately optimized parent to 0.018232. The published rank above uses the default pipeline.

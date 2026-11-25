@@ -133,12 +133,26 @@ def retime(instance, incumbent, output, seconds):
     }
 
 
-def solve(instance, output, *, route_mip=False):
+def pooled_routes(instance, work, left, right, deadline):
+    paths = [work / "left.xml", work / "right.xml"]
+    for path, parent in zip(paths, (left, right)):
+        export(path, parent)
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        return None
+    child = work / "pool.xml"
+    optimize_routes(instance, paths, child, remaining, cliques=True)
+    return load_plans([child])[0]
+
+
+def solve(instance, output, *, route_mip=False, recombine_seconds=0):
     """Solve an official input from scratch, publishing a plan after each stage."""
     instance, output = Path(instance), Path(output)
     if instance.resolve() == output.resolve():
         raise ValueError("Input and output paths must differ")
 
+    if recombine_seconds < 0:
+        raise ValueError("recombination time must be nonnegative")
     problem = ET.parse(instance).getroot()
     routes = RouteSearch(problem)
 
@@ -184,6 +198,21 @@ def solve(instance, output, *, route_mip=False):
             return load_plans([candidate])[0]
 
         steps = [calendar, assignment_fallback, volumes, route_step, timing_step]
+        if recombine_seconds > 0:
+            def alternate_calendar(plan, deadline):
+                if search(instance, candidate, min(8, deadline - time.monotonic()), 17,
+                          rotate=True, fleet_aware=True):
+                    return load_plans([candidate])[0]
+                return None
+
+            def mix_routes(plan, deadline):
+                def assemble(left, right, limit):
+                    return pooled_routes(instance, Path(tmp), left, right,
+                                         min(limit, time.monotonic() + recombine_seconds))
+                return run_pipeline([alternate_calendar], routes.score, initial=plan,
+                                    seconds=max(0., deadline - time.monotonic()), recombine=assemble)
+
+            steps.append(mix_routes)
         run_pipeline(steps, routes.score, on_accept=lambda plan: export(output, plan))
         return timing
 
@@ -193,5 +222,6 @@ if __name__ == "__main__":
     parser.add_argument("instance", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--route-mip", action="store_true", help="use the benchmark mixed-integer route pool")
+    parser.add_argument("--recombine-seconds", type=float, default=0, help="pool routes with a second calendar plan and set the pool solve budget")
     args = parser.parse_args()
-    print(json.dumps(solve(args.instance, args.output, route_mip=args.route_mip)), flush=True)
+    print(json.dumps(solve(args.instance, args.output, route_mip=args.route_mip, recombine_seconds=args.recombine_seconds)), flush=True)

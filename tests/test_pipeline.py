@@ -69,3 +69,21 @@ class PipelineTests(unittest.TestCase):
             run_pipeline([step], int, policy=choose)
         with self.assertRaises(ValueError):
             run_pipeline([], int, policy=choose, max_steps=1)
+
+    def test_recombine_can_use_a_worse_parent(self):
+        saved = []
+        parent = (2, 5)
+        challenger = (6, 1)
+        def mix(left, right, deadline):
+            self.assertEqual((left, right), (parent, challenger))
+            return tuple(map(min, zip(left, right)))
+
+        best = run_pipeline([lambda *_: challenger], sum, initial=parent,
+                            recombine=mix, on_accept=saved.append)
+        self.assertEqual(best, (2, 1))
+        self.assertEqual(saved, [best])
+
+    def test_both_parents_survive_a_failed_or_inferior_recombination(self):
+        for proposal, child, expected in [(2, None, 2), (9, None, 4), (2, 3, 2), (9, 7, 4)]:
+            self.assertEqual(run_pipeline([lambda *_: proposal], int, initial=4,
+                                          recombine=lambda *_: child), expected)
