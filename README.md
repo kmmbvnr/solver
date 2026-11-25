@@ -175,6 +175,7 @@ For assignments that block one another, build a step with `ejection_chain(start,
 - `hill_climbing` samples feasible moves and accepts improvements and ties. Set `allow_equal=False` for strict greedy descent.
 - `great_deluge` samples the same moves under a falling cost ceiling controlled by `margin` and `target`.
 - `simulated_annealing(move, score, attempts=..., temperature=..., seed=...)` explores feasible moves, can accept uphill costs as it cools, and returns its best plan. Use the resulting step in a fixed pipeline or a step policy.
+- `ResumableAnnealing(move, score, attempts=3000, cycle_attempts=50000, temperature=8, seed=1)` gives control back to the pipeline after each burst. Reuse the same step within a run to keep the current point, best plan, random streams and cooling position. At the cycle boundary it restarts from the best plan with the next seed. Construct a fresh step for each independent run.
 - `neighborhood_search` runs destroy-and-repair trials with strict or Metropolis acceptance.
 - `move_sequence` passes intermediate proposals between moves and scores the final plan once.
 - `reassignment_search` tries transfers, rebuilds the affected assignments and compares full plan costs.
