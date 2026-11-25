@@ -16,3 +16,5 @@ python -m demos.itc.2002.solve demos/itc/2002/competition01.tim /tmp/competition
 ```
 
 On `competition01` the archived validator confirmed a complete timetable for all 400 events with penalty **77**. Competition winner Philipp Kostuch scored **45** on this instance. Wall-clock search results can vary. [Data and validators](https://github.com/tomas-muller/cpsolver-itc2007) · [Historical results, Table 2](https://iridia.ulb.ac.be/~mbiro/paperi/ChiBirSocRos2006js.pdf)
+
+On all 20 competition instances, one run per instance with a local 60-second budget produced 20 validator-confirmed feasible schedules. The total penalty was **1,645**. ShiftOpt beat Kostuch on one instance (75 versus 78 on competition13) and scored higher penalties on the other 19. The historical entries could select their best run.
