@@ -1,0 +1,15 @@
+begin main
+team_identifier example
+cost 30
+end main
+begin outages
+end outages
+begin power_output
+scenario 0
+begin type1_plants
+name A 0 0
+name B 1 10
+end type1_plants
+begin type2_plants
+end type2_plants
+end power_output
