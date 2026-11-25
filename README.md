@@ -29,6 +29,46 @@ sequenceDiagram
     P-->>D: Best plan found or None
 ```
 
+### Example: packing a bag
+
+Pack as much weight as possible into a bag with capacity 10. The greedy step takes items in order. The beam step starts a fresh search while the pipeline keeps the greedy plan.
+
+```python
+from shiftopt import beam_search, run_pipeline
+
+weights = (6, 5, 5)
+capacity = 10
+
+def greedy(best, deadline):
+    bag = ()
+    for weight in weights:
+        if sum(bag) + weight <= capacity:
+            bag += (weight,)
+    return bag
+
+def pack_with_beam(best, deadline):
+    def expand(state):
+        i, bag = state
+        yield i + 1, bag                       # Skip this item.
+        if sum(bag) + weights[i] <= capacity:
+            yield i + 1, bag + (weights[i],)   # Take this item.
+
+    result = beam_search(
+        (0, ()), expand,
+        key=lambda state: (state[0], sum(state[1])),
+        priority=lambda state: -sum(state[1]),
+        complete=lambda state: state[0] == len(weights),
+        width=2,
+        deadline=deadline,
+    )
+    return result[1] if result is not None else None
+
+plan = run_pipeline([greedy, pack_with_beam], score=lambda bag: -sum(bag), seconds=1)
+print(plan)  # (5, 5)
+```
+
+Inside the beam step, `priority` ranks partial bags. Width 1 keeps the 6 and misses the pair of 5s. Width 2 also explores skipping the 6. Between steps, `score` ranks complete bags, so the pipeline replaces `(6,)` with `(5, 5)`.
+
 ## Core algorithms
 
 - `beam_search` keeps the best partial plans at each search depth.
