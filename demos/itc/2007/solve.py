@@ -9,7 +9,7 @@ from pathlib import Path
 
 from demos.itc.events import read_events, write_events
 from demos.itc.timetable import TimetableMoves, construct, exchange_labels
-from shiftopt import great_deluge, hill_climbing, run_pipeline, simulated_annealing, stagnation_policy
+from shiftopt import ResumableAnnealing, great_deluge, hill_climbing, run_pipeline, simulated_annealing, stagnation_policy
 
 curriculum = import_module("demos.itc.2007.curriculum")
 exams = import_module("demos.itc.2007.exams")
@@ -48,7 +48,11 @@ def main():
     parser.add_argument("--policy", choices=("fixed", "repeat", "stagnation"), default="fixed")
     parser.add_argument("--patience", type=int, default=1, help="unsuccessful bursts before switching")
     parser.add_argument("--room-repair", action="store_true", help="include a room relaxation step (tim)")
+    parser.add_argument("--resume", action="store_true", help="preserve annealing state across bursts")
+    parser.add_argument("--cycle-attempts", type=int, default=50000)
     args = parser.parse_args()
+    if args.resume and (args.search != "anneal" or args.policy == "fixed" or args.cycle_attempts < 1):
+        parser.error("--resume requires annealing, a repeating policy and a positive cycle length")
     if args.room_repair and (args.track != "tim" or args.policy == "repeat"):
         parser.error("--room-repair requires tim and the fixed or stagnation policy")
     if args.policy != "fixed" and (args.compactness or args.attempts < 1):
@@ -77,6 +81,9 @@ def main():
     prefix = tuple(steps)
     factory = partial(methods[args.search], TimetableMoves(problem), score, attempts=args.attempts - polish)
     operators = [SearchBurst(factory, args.seed)]
+    if args.resume:
+        operators = [ResumableAnnealing(TimetableMoves(problem), score, attempts=args.attempts,
+                                        cycle_attempts=args.cycle_attempts, temperature=8, seed=args.seed)]
     if args.policy == "stagnation":
         alternate = methods["anneal" if args.search == "hill" else "hill"]
         factory = partial(alternate, TimetableMoves(problem), score, attempts=args.attempts)

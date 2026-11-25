@@ -110,3 +110,53 @@ def _search_step(move, score, attempts, seed, accept):
         return best
 
     return search
+
+
+class ResumableAnnealing:
+    """One run's annealing trajectory, yielding its best plan after each burst.
+
+    A cycle cools over cycle_attempts proposals, then restarts at the best plan
+    with the next seed. A better external incumbent replaces the current point
+    without resetting the cooling schedule. Create a fresh step per run.
+    """
+
+    def __init__(self, move, score, *, attempts, cycle_attempts, temperature, seed=0):
+        if any(type(n) is not int or n < 1 for n in (attempts, cycle_attempts)):
+            raise ValueError("attempt budgets must be positive integers")
+        if not isfinite(temperature) or temperature <= 0 or not isinstance(seed, int):
+            raise ValueError("supply a positive finite temperature and an integer seed")
+        self.move, self.score = move, score
+        self.attempts, self.cycle_attempts = attempts, cycle_attempts
+        self.temperature, self.seed = temperature, seed
+        self.position = 0
+        self.best = self.current = None
+
+    def __call__(self, incumbent, deadline):
+        if incumbent is None:
+            return None
+        value = self.score(incumbent)
+        if self.best is None or value < self.best_value:
+            self.best = self.current = incumbent
+            self.best_value = self.current_value = value
+        for _ in range(self.attempts):
+            if monotonic() >= deadline:
+                break
+            if self.position == 0:
+                self.rng = Random(self.seed)
+                self.acceptance = Random(self.seed ^ 0xAF17)
+                self.seed += 1
+                self.current, self.current_value = self.best, self.best_value
+            proposal = self.move(self.current, self.rng, deadline)
+            i = self.position
+            self.position = (i + 1) % self.cycle_attempts
+            if proposal is None:
+                continue
+            value = self.score(proposal)
+            if value < self.current_value or _metropolis(
+                self.temperature, self.best_value, self.current_value, value, i,
+                self.cycle_attempts, self.acceptance,
+            ):
+                self.current, self.current_value = proposal, value
+            if value < self.best_value:
+                self.best, self.best_value = proposal, value
+        return self.best
