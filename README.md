@@ -6,18 +6,28 @@ Install the solver with `python -m pip install .`. To run the demos, use `python
 
 ## How the solver works
 
-Each demo supplies its steps in execution order and defines how to score a plan. ShiftOpt makes one pass, keeping the first feasible plan and each strict improvement. Each step receives the best plan so far and the shared deadline. When time runs out, the pipeline stops before starting another step.
+Each demo supplies named steps and a score to minimize. By default the engine runs the steps once in order. A demo can also supply a policy that picks the next step from a fixed list. It can repeat a step or stop early.
 
 ```mermaid
-flowchart LR
-    A["Step 1"] -->|best so far| B["Step 2"]
-    B --> C["…"] --> N["Step N"] --> R(["Return best plan"])
-    B -. optional call .-> S["External solver<br/>HiGHS or CP-SAT"]
+flowchart TD
+    Start(["Start with an optional plan"]) --> Pick{"How is the next step chosen?"}
+    Pick -->|Fixed order| Next["Take next in sequence<br/>Step 1 → Step 2 → … → Step N"]
+    Pick -->|Policy| Choose["Read best plan, trial history<br/>and remaining time"]
+    Next -->|Step available| Run["Run step with best plan and deadline"]
+    Choose -->|Selected step| Run
+    Run <-->|Optional model solve| Ext["External solver<br/>HiGHS or CP-SAT"]
+    Run --> Keep["Keep first feasible plan or strict improvement"]
+    Keep --> Pick
+    Next -->|Sequence exhausted| End(["Return best plan"])
+    Choose -->|Policy stops| End
+    Pick -->|Time or step budget spent| End
 ```
+
+The engine owns the deadline, scoring and trial history. The demo defines its moves and when to select them. Each policy call sees which steps ran, whether their proposals were accepted and how long they took. Adaptive runs require a finite `max_steps`, including construction.
 
 ### Example: packing a bag
 
-Pack as much weight as possible into a bag with capacity 12. The pipeline tries greedy packing, beam search and a binary optimization model solved by HiGHS.
+Pack as much weight as possible into a bag with capacity 12. The policy starts with greedy packing, tries beam search when time permits, and calls HiGHS if there is still room in the bag.
 
 ```python
 from time import monotonic
@@ -63,12 +73,25 @@ def pack_with_highs(best, deadline):
         return tuple(w for w, var in zip(weights, take) if result.value(var) > 0.5)
     return None
 
+def choose_step(best, history, remaining):
+    if best is None:
+        return greedy
+    if sum(best) == capacity:
+        return None
+    tried = {trial.step for trial in history}
+    if pack_with_beam not in tried and remaining > 0.1:
+        return pack_with_beam
+    if pack_with_highs not in tried:
+        return pack_with_highs
+    return None
+
 steps = [greedy, pack_with_beam, pack_with_highs]
-plan = run_pipeline(steps, score=lambda bag: -sum(bag), seconds=5)
+plan = run_pipeline(steps, score=lambda bag: -sum(bag), seconds=5,
+                    policy=choose_step, max_steps=4)
 print(plan)  # (8, 4)
 ```
 
-Greedy takes `(2, 3, 4)` for a total of 9. Inside beam search, `priority` ranks partial bags and `width=2` keeps two alternatives, yielding `(3, 8)` for 11. The last step gives HiGHS one binary variable per item and uses 11 as a lower bound. HiGHS finds `(8, 4)` for 12. Across all three steps, the pipeline compares complete bags using `score`.
+Greedy takes `(2, 3, 4)` for a total of 9. Inside beam search, `priority` ranks partial bags and `width=2` keeps two alternatives, yielding `(3, 8)` for 11. The last step gives HiGHS one binary variable per item and uses 11 as a lower bound. HiGHS finds `(8, 4)` for 12. The policy sees a full bag and stops. With weights `(6, 6)`, greedy fills the bag immediately and the policy stops after one trial.
 
 ## Core algorithms
 
