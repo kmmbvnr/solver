@@ -204,6 +204,25 @@ Each edition has an independent pipeline, a small input and checked results on p
 | [2026](demos/mip/2026/) | Evaluate batches of integer moves on a GPU |
 | [2027](demos/mip/2027/) | Shrink infeasible subsystems and certify the retained elements |
 
+## PACE benchmarks
+
+Each demo runs its own pipeline and writes a solution in the competition format. The edition pages report results on individual public inputs. Exact-track instances can be used to measure heuristic quality. Official rankings require the full competition evaluation.
+
+| Edition | Problems |
+|---|---|
+| [2016](demos/pace/2016/) | Feedback vertex set, Treewidth |
+| [2017](demos/pace/2017/) | Minimum fill-in, Treewidth |
+| [2018](demos/pace/2018/) | Steiner tree |
+| [2019](demos/pace/2019/) | Hypertree width, Vertex cover |
+| [2020](demos/pace/2020/) | Treedepth |
+| [2021](demos/pace/2021/) | Cluster editing, Kernelization |
+| [2022](demos/pace/2022/) | Directed feedback vertex set |
+| [2023](demos/pace/2023/) | Twinwidth |
+| [2024](demos/pace/2024/) | One-sided crossing minimization |
+| [2025](demos/pace/2025/) | Dominating set, Hitting set |
+| [2026](demos/pace/2026/) | Maximum agreement forest |
+| [2027](demos/pace/2027/) | Unweighted k-path, Weighted directed k-path |
+
 ## License
 
 ShiftOpt is licensed under the [GNU Affero General Public License, version 3 only](LICENSE). Third-party benchmark data is subject to its original terms.
