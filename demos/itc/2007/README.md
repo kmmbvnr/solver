@@ -81,7 +81,7 @@ validator. The directed step is opt-in.
 
 ## Choosing a step
 
-The demo uses a fixed sequence. To let a policy choose between short bursts of single-event moves and exchanges on the same parsed `problem`:
+The default demo uses a fixed sequence. To let a policy choose between short bursts of single-event moves and exchanges on the same parsed `problem`:
 
 ```python
 from functools import partial
@@ -99,6 +99,42 @@ exchange = simulated_annealing(TimetableMoves(problem, ("swap", "chain")),
 policy = bandit_policy([local, exchange], construct=build)
 plan = run_pipeline([build, local, exchange], score, policy=policy, max_steps=50, seconds=60)
 ```
+
+### Switching on stagnation
+
+`--policy repeat` repeats the chosen search method with successive seeds.
+`--policy stagnation` starts with that method and switches to hill climbing
+(or to annealing when starting with hill climbing). Each burst gets
+`--attempts` proposals. After `--patience` consecutive bursts without a strict
+improvement, the policy advances to the next step, cycling back to the first.
+Construction and all bursts share the wall-clock budget.
+
+On the post-enrolment track, `--room-repair` adds a separate step. It swaps a
+connected group of events between two periods and temporarily releases all
+rooms in those periods. It checks period availability and precedence, then
+uses bipartite matching to assign distinct eligible rooms. Only a complete
+matching can produce a proposal. The generic `neighborhood_search` step
+handles acceptance and retains the best feasible timetable.
+
+```sh
+python -m demos.itc.2007.solve tim demos/itc/2007/comp-2007-2-5.tim /tmp/tim.sln --seconds 300 --attempts 3000 --policy stagnation --patience 1 --room-repair
+```
+
+Each run below used 300 seconds including construction, 3,000 attempts per
+burst and patience 1. Values are final penalties in seed order (1, 2, 3).
+Within each seed all methods started from the same timetable.
+
+| Instance | Repeated annealing | Repeated hill climbing | Switch on stagnation | Switch with room repair |
+| --- | --- | --- | --- | --- |
+| Curriculum comp01 | 25, 26, 28 | 8, 7, 6 | 6, 6, 6 | — |
+| Post-enrolment set 5 | 1,146, 1,074, 1,032 | — | 1,147, 1,162, 1,189 | 1,167, 1,249, 1,147 |
+
+On post-enrolment set 5, the repair step directly removed 26, 49 and 52 penalty
+points during its three runs. The final timetable beat switching alone on one
+seed. Repeated annealing scored best on all three. At 50,000 attempts per
+burst, seed 1 scored 713 with repeated annealing, 883 with switching and 893
+with switching plus repair. Competition validators confirmed all 21 schedules
+and their penalties. Both switching and room repair remain opt-in.
 
 ## Previous UniTime pipeline on the full competition set
 
