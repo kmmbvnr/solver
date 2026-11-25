@@ -3,6 +3,7 @@
 import argparse
 from collections import defaultdict
 from pathlib import Path
+from time import monotonic
 
 import numpy as np
 from instance import read
@@ -75,20 +76,27 @@ def solve(instance, output, seconds, refine_seconds, repair_first=False, margins
         for job in data["Interventions"].values()
         for _, v in job["risk"].values()
     )
-    if repair_first or scenario_bytes > 750_000_000:
-        plan = repair(data, seconds, margins)
-    else:
+    def mean_risk(plan, deadline):
         try:
-            plan = construct(data, seconds)
+            return construct(data, min(seconds, deadline - monotonic()))
         except NoSchedule:
-            plan = repair(data, seconds, margins)
+            return None
+
+    def conflict_repair(plan, deadline):
+        if plan is None:
+            return repair(data, min(seconds, deadline - monotonic()), margins)
+        return None
+
+    def improve_dates(plan, deadline):
+        return refine(data, plan, min(deadline, monotonic() + refine_seconds))
+
+    steps = []
+    if not repair_first and scenario_bytes <= 750_000_000:
+        steps.append(mean_risk)
+    steps.append(conflict_repair)
     if refine_seconds:
-        plan = run_pipeline(
-            [lambda incumbent, deadline: refine(data, incumbent, deadline)],
-            lambda candidate: objective_value(data, candidate),
-            initial=plan,
-            seconds=refine_seconds,
-        )
+        steps.append(improve_dates)
+    plan = run_pipeline(steps, lambda candidate: objective_value(data, candidate))
     with output.open("w") as stream:
         for name, start in plan.items():
             print(name, start + 1, file=stream)

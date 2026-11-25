@@ -14,9 +14,11 @@ class Heuristic(Protocol[Plan]):
 
 def run_pipeline(steps: Iterable[Heuristic[Plan]], score: Callable, *,
                  initial: Plan | None = None, seconds: float = float("inf"),
-                 on_step: Callable | None = None) -> Plan | None:
+                 on_step: Callable | None = None,
+                 on_accept: Callable[[Plan], None] | None = None) -> Plan | None:
     """Minimize an ordered score. Steps share a cooperative monotonic deadline.
 
+    on_accept(plan) can checkpoint the first proposal and each strict improvement.
     Constructors accept an empty incumbent. A repair step may decline a move.
     on_step(step, old_score, proposed_score, elapsed) observes every completed step.
     """
@@ -34,6 +36,8 @@ def run_pipeline(steps: Iterable[Heuristic[Plan]], score: Callable, *,
         proposed = None if candidate is None else score(candidate)
         if candidate is not None and (best is None or proposed < best_score):
             best, best_score = candidate, proposed
+            if on_accept is not None:
+                on_accept(best)
         if on_step is not None:
             on_step(step, previous, proposed, monotonic() - started)
     return best

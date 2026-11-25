@@ -144,24 +144,21 @@ def solve(instance, output, *, route_mip=False):
 
     with tempfile.TemporaryDirectory() as tmp:
         candidate = Path(tmp) / "candidate.xml"
-        if not search(instance, candidate, 150, 7, rotate=True, fleet_aware=True):
+        def calendar(plan, deadline):
+            seconds = min(150, deadline - time.monotonic())
+            if search(instance, candidate, seconds, 7, rotate=True, fleet_aware=True):
+                return load_plans([candidate])[0]
+            return None
+
+        def assignment_fallback(plan, deadline):
+            if plan is not None:
+                return None
             print(json.dumps({"stage": "cp_sat_assignment"}), flush=True)
-            if not assign_with_cp_sat(
-                instance,
-                candidate,
-                seconds=150,
-                step=720,
-                fraction=0.8,
-                seed=7,
-                workers=1,
-                max_stops=4,
-                companions=True,
-            ):
-                raise RuntimeError(
-                    "Neither constructor found a complete schedule within its budget"
-                )
-        initial = load_plans([candidate])[0]
-        export(output, initial)
+            if not assign_with_cp_sat(instance, candidate, seconds=min(150, deadline - time.monotonic()),
+                                      step=720, fraction=0.8, seed=7, workers=1,
+                                      max_stops=4, companions=True):
+                raise RuntimeError("Neither constructor found a complete schedule within its budget")
+            return load_plans([candidate])[0]
 
         def volumes(plan, deadline):
             export(candidate, plan)
@@ -173,11 +170,9 @@ def solve(instance, output, *, route_mip=False):
                 return None
             limit = min(deadline, time.monotonic() + 48)
             if not route_mip:
-                improved = routes.improve(plan, limit)
-                export(candidate, improved)
-                return improved
+                return routes.improve(plan, limit)
             export(candidate, plan)
-            optimize_routes(instance, [candidate], candidate, 48, offsets=(-60, 60),
+            optimize_routes(instance, [candidate], candidate, min(48, deadline - time.monotonic()), offsets=(-60, 60),
                             cliques=True, window=(0, min(4, routes.horizon // 1440)),
                             extra_stops=4, replace_last=True)
             return load_plans([candidate])[0]
@@ -185,16 +180,11 @@ def solve(instance, output, *, route_mip=False):
         timing = {}
         def timing_step(plan, deadline):
             export(candidate, plan)
-            timing.update(retime(instance, candidate, candidate, 10))
+            timing.update(retime(instance, candidate, candidate, min(10, deadline - time.monotonic())))
             return load_plans([candidate])[0]
 
-        def publish(step, previous, proposed, elapsed):
-            if proposed is not None and proposed < previous:
-                with candidate.open("rb") as src, atomic_output(output, "wb") as dst:
-                    dst.write(src.read())
-
-        best = run_pipeline([volumes, route_step, timing_step], routes.score, initial=initial, on_step=publish)
-        export(output, best)
+        steps = [calendar, assignment_fallback, volumes, route_step, timing_step]
+        run_pipeline(steps, routes.score, on_accept=lambda plan: export(output, plan))
         return timing
 
 

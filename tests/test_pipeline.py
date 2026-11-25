@@ -27,3 +27,11 @@ class PipelineTests(unittest.TestCase):
 
         self.assertEqual(run_pipeline([construct], int), 0)
         self.assertIsNone(run_pipeline([construct], int, seconds=0))
+
+    def test_checkpoints_only_accepted_proposals(self):
+        proposals = iter([None, 3, 3, 4, 1])
+        saved = []
+        result = run_pipeline([lambda plan, deadline: next(proposals)] * 5, int,
+                              on_accept=saved.append)
+        self.assertEqual(saved, [3, 1])
+        self.assertEqual(result, 1)
