@@ -159,6 +159,14 @@ plan = run_pipeline([greedy, *moves], score, policy=policy, max_steps=6,
 
 Tune `exploration` in reward units. By default, a strict improvement earns one. With `gain=`, an accepted move earns the supplied nonnegative gain. Construction, ties and misses earn zero. The [2026 routing demo](demos/roadef/2026/) compares UCB and a manual policy under the same budget.
 
+Use `stagnation_policy([anneal, hill, repair], prefix=[build], patience=2)` to run
+construction once and then switch after two consecutive bursts without a strict
+improvement. Each improvement resets the count. After repair, selection wraps
+to annealing. Pass all four steps to `run_pipeline` and give each search burst
+a small attempt budget so the policy can regain control. The [ITC 2007 demo](demos/itc/2007/)
+uses this interface with a step that temporarily releases rooms.
+
+
 For assignments that block one another, build a step with `ejection_chain(start, extend, close, score, max_depth=3, max_nodes=16, attempts=100, seed=7)` and include it in the pipeline's step list. The demo opens a partial exchange, proposes which assignment to displace next, and checks whether the chain closes into a feasible plan. The engine searches those alternatives until it finds an improvement or reaches a limit. [2020 scheduling example](demos/roadef/2020/pairs.py)
 
 ## Core algorithms

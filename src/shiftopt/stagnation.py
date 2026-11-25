@@ -1,6 +1,9 @@
 """Cycle through search steps after consecutive trials without improvement."""
 
 
+from functools import partial
+
+
 def stagnation_policy(operators, *, patience=1, prefix=()):
     """Run the prefix once, then keep each operator until patience misses.
 
@@ -13,21 +16,22 @@ def stagnation_policy(operators, *, patience=1, prefix=()):
     if type(patience) is not int or patience < 1:
         raise ValueError("patience must be a positive integer")
 
-    def choose(best, history, remaining):
-        if len(history) < len(prefix):
-            return prefix[len(history)]
-        if best is None:
-            return None
-        trials = len(history) - len(prefix)
-        if not trials:
-            return operators[0]
-        last = history[-1].step
-        misses = min(trials, patience)
-        if misses == patience and all(
-            trial.step is last and not trial.accepted for trial in history[-misses:]
-        ):
-            index = next(i for i, step in enumerate(operators) if step is last)
-            return operators[(index + 1) % len(operators)]
-        return last
+    return partial(_choose_step, operators, prefix, patience)
 
-    return choose
+
+def _choose_step(operators, prefix, patience, best, history, remaining):
+    if len(history) < len(prefix):
+        return prefix[len(history)]
+    if best is None:
+        return None
+    trials = len(history) - len(prefix)
+    if not trials:
+        return operators[0]
+    last = history[-1].step
+    misses = min(trials, patience)
+    if misses == patience and all(
+        trial.step is last and not trial.accepted for trial in history[-misses:]
+    ):
+        index = next(i for i, step in enumerate(operators) if step is last)
+        return operators[(index + 1) % len(operators)]
+    return last
