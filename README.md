@@ -31,13 +31,14 @@ sequenceDiagram
 
 ### Example: packing a bag
 
-Pack as much weight as possible into a bag with capacity 10. The greedy step takes items in order. The beam step starts a fresh search while the pipeline keeps the greedy plan.
+Pack as much weight as possible into a bag with capacity 12. The pipeline tries greedy packing, beam search and a binary optimization model solved by HiGHS.
 
 ```python
-from shiftopt import beam_search, run_pipeline
+from time import monotonic
+from shiftopt import MAXIMIZE, Model, beam_search, quicksum, run_pipeline
 
-weights = (6, 5, 5)
-capacity = 10
+weights = (2, 3, 8, 4)
+capacity = 12
 
 def greedy(best, deadline):
     bag = ()
@@ -63,11 +64,25 @@ def pack_with_beam(best, deadline):
     )
     return result[1] if result is not None else None
 
-plan = run_pipeline([greedy, pack_with_beam], score=lambda bag: -sum(bag), seconds=1)
-print(plan)  # (5, 5)
+def pack_with_highs(best, deadline):
+    model = Model()
+    take = [model.addVar(vtype="B") for weight in weights]
+    total = quicksum(weight * var for weight, var in zip(weights, take))
+    model.addConstr(total <= capacity)
+    if best is not None:
+        model.addConstr(total >= sum(best))
+    model.setObjective(total, MAXIMIZE)
+    result = model.optimize(time_limit=max(0, deadline - monotonic()))
+    if result.has_solution:
+        return tuple(w for w, var in zip(weights, take) if result.value(var) > 0.5)
+    return None
+
+steps = [greedy, pack_with_beam, pack_with_highs]
+plan = run_pipeline(steps, score=lambda bag: -sum(bag), seconds=5)
+print(plan)  # (8, 4)
 ```
 
-Inside the beam step, `priority` ranks partial bags. Width 1 keeps the 6 and misses the pair of 5s. Width 2 also explores skipping the 6. Between steps, `score` ranks complete bags, so the pipeline replaces `(6,)` with `(5, 5)`.
+Greedy takes `(2, 3, 4)` for a total of 9. Inside beam search, `priority` ranks partial bags and `width=2` keeps two alternatives, yielding `(3, 8)` for 11. The last step gives HiGHS one binary variable per item and uses 11 as a lower bound. HiGHS finds `(8, 4)` for 12. Across all three steps, the pipeline compares complete bags using `score`.
 
 ## Core algorithms
 
