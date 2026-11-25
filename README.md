@@ -245,7 +245,7 @@ Each demo runs its own pipeline and writes a solution in the competition format.
 | --- | --- | --- |
 | [2002](demos/itc/2002/) | University events | 20/20 feasible in 60 s each, total penalty 1,645. Reconstructed 4th of 12 |
 | [2007](demos/itc/2007/) | Exams, post-enrolment, curriculum | Reconstructed places out of 6: exams 1st, post-enrolment 6th, curriculum 2nd. 495/570 verified runs at 60 s |
-| [2011](demos/itc/2011/) | High-school timetabling | BrazilInstance2: 0 hard, 217 soft. Western Greece 3: 0 hard, 19 soft |
+| [2011](demos/itc/2011/) | High-school timetabling | Round 2: 79/180 verified schedules, 269 s per trial. Reconstructed 4th of 5 |
 | [2019](demos/itc/2019/) | University classes, rooms and student sectioning | 1/30 feasible from scratch in 60 s each. Four points, reconstructed 6th of 6 |
 | [2021](demos/itc/2021/) | Sports timetabling | 0/45 feasible from scratch in 60 s each. Zero points, reconstructed 14th of 14 |
 
