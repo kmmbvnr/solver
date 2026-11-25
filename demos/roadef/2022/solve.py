@@ -11,7 +11,7 @@ from pathlib import Path
 
 from time import monotonic
 
-from shiftopt import beam_search, run_pipeline
+from shiftopt import beam_search, neighborhood_search, run_pipeline
 
 
 def records(folder, kind):
@@ -79,7 +79,7 @@ class Load:
         return x, y, length, width
 
 
-def pack_group(rows, truck, ident, limits, combine, beam_width=0, deadline=float("inf")):
+def pack_group(rows, truck, ident, limits, combine, beam_width=0, deadline=float("inf"), attempts=0):
     """Build homogeneous stacks and preserve the identity of every shipped unit."""
     groups = defaultdict(list)
     for r in rows:
@@ -100,7 +100,30 @@ def pack_group(rows, truck, ident, limits, combine, beam_width=0, deadline=float
         # Fill long and wide stacks first, before the remaining lanes get fragmented.
         order = sorted(order, key=lambda g: int(g[0]["Length"]) * int(g[0]["Width"]), reverse=True)
     base = pack_order(order, truck, ident, limits)
-    if not combine or not beam_width or len(base) < 2 or len(order) < 2:
+    if not combine or len(base) < 2 or len(order) < 2:
+        return base
+    if attempts:
+        def destroy(state, rng):
+            sequence, _ = state
+            removed = set(rng.sample(sequence, max(2, len(sequence) // 3)))
+            return [i for i in sequence if i not in removed], [i for i in sequence if i in removed]
+
+        def repair(partial_order, rng, deadline):
+            kept, removed = partial_order
+            for i in removed:
+                kept.insert(rng.randrange(len(kept) + 1), i)
+            return kept, pack_order((order[i] for i in kept), truck, ident, limits)
+
+        def score(state):
+            loads = state[1]
+            length = sum(max(load.ends) for load in loads)
+            return len(loads) + length / (1 + len(loads) * truck["Length"])
+
+        search = neighborhood_search(destroy, repair, score, attempts=attempts, seed=7)
+        result = run_pipeline([search], score, initial=(list(range(len(order))), base),
+                              seconds=max(0., deadline - monotonic()))
+        return result[1]
+    if not beam_width:
         return base
     best = base
 
@@ -172,7 +195,9 @@ def pack_order(order, truck, ident, limits):
     return loads
 
 
-def solve(folder, output, combine=True, beam_width=0, group_limit=None, largest_first=False):
+def solve(folder, output, combine=True, beam_width=0, group_limit=None, largest_first=False, attempts=0):
+    if attempts < 0 or (attempts and (not combine or beam_width)):
+        raise ValueError("neighborhood attempts require consolidation and an exclusive search budget")
     if group_limit is not None and (group_limit < 0 or not (combine and beam_width)):
         raise ValueError("a group limit requires beam search and a nonnegative budget")
     if largest_first and group_limit is None:
@@ -202,13 +227,13 @@ def solve(folder, output, combine=True, beam_width=0, group_limit=None, largest_
         return {group: (rows, pack_group(rows, trips[group[0]], group[0], bottom_limit, False))
                 for group, rows in batches.items()}
 
-    def repack_groups(plan, deadline, width):
+    def repack_groups(plan, deadline, width, trials=0):
         proposal = plan.copy()
         for group, (rows, incumbent) in plan.items():
             if monotonic() >= deadline:
                 break
             ident = group[0]
-            loads = pack_group(rows, trips[ident], ident, bottom_limit, True, width, deadline)
+            loads = pack_group(rows, trips[ident], ident, bottom_limit, True, width, deadline, trials)
             if len(loads) < len(incumbent):
                 proposal[group] = rows, loads
         return proposal
@@ -246,6 +271,10 @@ def solve(folder, output, combine=True, beam_width=0, group_limit=None, largest_
     steps = [assign_and_pack]
     if combine:
         steps.append(consolidate)
+        if attempts:
+            def search_groups(plan, deadline):
+                return repack_groups(plan, deadline, 0, attempts)
+            steps.append(search_groups)
         if beam_width:
             steps.append(reorder_stacks)
     shipment = run_pipeline(steps, truck_count)
@@ -311,5 +340,6 @@ if __name__ == "__main__":
                         help="explore alternative stack orders (0 disables search)")
     parser.add_argument("--group-limit", type=int, help="limit the number of groups to reorder")
     parser.add_argument("--largest-first", action="store_true", help="prioritize groups using the most trucks")
+    parser.add_argument("--lns-attempts", type=int, default=0, help="destroy-and-repair trials per group")
     args = parser.parse_args()
-    solve(args.instance, args.output, not args.rows_only, args.beam_width, args.group_limit, args.largest_first)
+    solve(args.instance, args.output, not args.rows_only, args.beam_width, args.group_limit, args.largest_first, args.lns_attempts)
