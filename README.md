@@ -17,7 +17,7 @@ flowchart TD
     Next -->|Step available| Run["Run step with best plan and deadline"]
     UCB -->|Selected step| Run
     Choose -->|Selected step| Run
-    Run <-->|Search within a step| Search["Beam or bounded best-first search<br/>Neighborhood, ejection chain or reassignment"]
+    Run <-->|Search within a step| Search["Beam or bounded best-first search<br/>Neighborhood, ejection chain or reassignment<br/>Fixed or adaptive restart strength"]
     Run <-->|Compound step| Seq["Move 1 → … → Move K<br/>Return the final proposal for one reward"]
     Run <-->|Optional model solve| Ext["External solver<br/>HiGHS or CP-SAT"]
     Run --> Select["Compare proposal with best plan"]
@@ -163,6 +163,7 @@ For assignments that block one another, build a step with `ejection_chain(start,
 
 ## Core algorithms
 
+- `restart_strength` controls the number of perturbation moves between local searches.
 - `neighborhood_search` runs destroy-and-repair trials with strict or Metropolis acceptance.
 - `move_sequence` passes intermediate proposals between moves and scores the final plan once.
 - `reassignment_search` tries transfers, rebuilds the affected assignments and compares full plan costs.
