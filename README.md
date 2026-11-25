@@ -4,7 +4,30 @@ ShiftOpt is a general-purpose discrete optimization solver. We develop our own h
 
 Install the solver with `python -m pip install .`. To run the demos, use `python -m pip install '.[roadef]'`.
 
-Every benchmark runs its search through `run_pipeline(steps, score)`. The demo supplies named steps in execution order and defines how to score a complete plan. A step receives the best plan so far (initially `None`) and a deadline. It returns a feasible proposal or `None`. The engine keeps the first feasible plan and each strict improvement. Steps can use beam search, bounded flow or an external solver. Step selection is currently manual.
+## How the solver works
+
+Every demo defines its plan format, scoring function and step order. A step can build a plan from scratch, repair it or refine it. The same pipeline runs all five benchmarks.
+
+```mermaid
+sequenceDiagram
+    participant D as Benchmark demo
+    participant P as ShiftOpt pipeline
+    participant H as Heuristic step
+    participant S as External solver
+
+    D->>P: run_pipeline(steps, score)
+    loop For each step until the deadline
+        P->>H: Best plan so far + deadline
+        Note over H: Can use beam search, bounded flow<br/>or candidate selection
+        opt Step needs a solver
+            H->>S: Submit a subproblem to HiGHS or CP-SAT
+            S-->>H: Subproblem result
+        end
+        H-->>P: Feasible plan or None
+        Note over P: Keep the first plan and each<br/>strict improvement in score
+    end
+    P-->>D: Best plan found or None
+```
 
 ## ROADEF/EURO benchmarks
 
