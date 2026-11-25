@@ -241,13 +241,13 @@ Each demo runs its own pipeline and writes a solution in the competition format.
 
 ## International Timetabling Competition
 
-| Edition | Tracks | Sample results (lower is better) |
+| Edition | Tracks | Results |
 | --- | --- | --- |
 | [2002](demos/itc/2002/) | University events | 20/20 feasible in 60 s each, total penalty 1,645. Reconstructed 4th of 12 |
 | [2007](demos/itc/2007/) | Exams, post-enrolment, curriculum | Exam set 1: 4,496. Event set 5: 0 unplaced, penalty 7. Curriculum comp01: 5 |
 | [2011](demos/itc/2011/) | High-school timetabling | BrazilInstance2: 0 hard, 217 soft. Western Greece 3: 0 hard, 19 soft |
-| [2019](demos/itc/2019/) | University classes, rooms and student sectioning | wbg-fal10: 116 from scratch. lums-spr18: 193 with a public warm start, winner 95 |
-| [2021](demos/itc/2021/) | Sports timetabling | 0/45 scored instances from scratch in 60 s each. Early 9 retained a public 67-cost seed in a separate run |
+| [2019](demos/itc/2019/) | University classes, rooms and student sectioning | 1/30 feasible from scratch in 60 s each. Four points, reconstructed 6th of 6 |
+| [2021](demos/itc/2021/) | Sports timetabling | 0/45 feasible from scratch in 60 s each. Zero points, reconstructed 14th of 14 |
 
 ## License
 

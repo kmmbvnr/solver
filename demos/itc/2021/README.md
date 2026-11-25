@@ -29,3 +29,5 @@ python -m demos.itc.2021.solve "$data/Instances/ITC2021_Early_9.xml" /tmp/early9
 [Competition instances and bounds](https://robinxval.ugent.be/ITC2021/instances.php) · [Published schedules and validator](https://github.com/Robin-X/RobinX/tree/878bf2db7b25b43cc3022bc08c00be938b997b6a/Repository/ITC2021)
 
 Starting from scratch with a local 60-second budget per instance, ShiftOpt returned no feasible calendar on any of the 45 scored instances (0/15 early, 0/15 middle, 0/15 late). The competition allowed teams to set their own computing budgets.
+
+Zero feasible calendars earn **0 points**, placing this run **14th of 14** alongside the historical field. The last original entrant earned five points and the winner earned 596. [Organizers’ final ranking, Table 9](https://backoffice.biblio.ugent.be/download/01GK63HTH1EY74KDYTVJVBDR30/01GK63R600C3YVEF6C3TEPDM44)

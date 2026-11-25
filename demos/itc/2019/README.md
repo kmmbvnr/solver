@@ -23,3 +23,5 @@ python -m demos.itc.2019.solve /tmp/lums.xml /tmp/lums-out.xml --warm-start /tmp
 ```
 
 [Input and warm-start archive](https://github.com/ADDALemos/MPPTimetables) · [Competition results](https://www.itc2019.org/results) · [Solution format](https://www.itc2019.org/format)
+
+With a local 60-second budget per instance and no warm starts, ShiftOpt solved **1 of 30** scored instances. On `lums-spr18` its 487-class schedule passed a separate constraint and objective check at cost **415**. That would place fifth on this middle instance, between 178 and 820, for four points and **6th of 6 overall** alongside the five historical teams. The competition imposed no per-instance time limit. [Final score tables, slides 18, 26 and 33](https://www.itc2019.org/papers/itc2019-awards-slides.pdf)
