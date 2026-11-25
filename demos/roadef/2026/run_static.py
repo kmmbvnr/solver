@@ -42,8 +42,7 @@ def main():
             return table
         return SharedRows(first, table)
 
-    original.routing_table = share
-    original.solve(args.inputs, args.instance, args.seconds, args.output)
+    original.solve(args.inputs, args.instance, args.seconds, args.output, build_table=share)
 
 
 if __name__ == "__main__":

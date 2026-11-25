@@ -4,13 +4,13 @@ import json
 import subprocess
 import tempfile
 from collections import Counter
-from functools import lru_cache
+from functools import lru_cache, partial
 from pathlib import Path
 
 import numpy as np
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import dijkstra
-from shiftopt import Model, MINIMIZE, quicksum
+from shiftopt import Model, MINIMIZE, quicksum, run_pipeline
 
 
 def propose(graph, jobs, scenario, loads, via, period, rng, change_limit=None, offset=0):
@@ -120,11 +120,14 @@ def solve(folder, name, checker, output, rounds, period_only=False):
             report = json.loads(run.stdout)
             return report["saturations"] if report["valid"] else None
 
-        current = check(via)
-        if current is None:
-            raise ValueError("Default routing is infeasible")
-        output.write_bytes(candidate.read_bytes())
-        for step in range(rounds):
+        def default_routes(plan, deadline):
+            rows = check(via)
+            if rows is None:
+                raise ValueError("Default routing is infeasible")
+            return via, rows, candidate.read_bytes()
+
+        def waypoint_move(plan, deadline, *, step):
+            via, current, _ = plan
             ranked = sorted(current, key=lambda row: -row["sat"])
             periods = list(dict.fromkeys(row["t"] for row in ranked))
             loads = {(r["t"], r["from"], r["to"]): r["sat"] for r in current}
@@ -141,11 +144,17 @@ def solve(folder, name, checker, output, rounds, period_only=False):
             else:
                 trial[:] = moves
             if np.array_equal(via, trial):
-                continue
-            new = check(trial)
-            if new is not None and sorted((x["sat"] for x in new), reverse=True) < [x["sat"] for x in ranked]:
-                via, current = trial, new
-                output.write_bytes(candidate.read_bytes())
+                return None
+            rows = check(trial)
+            if rows is not None:
+                return trial, rows, candidate.read_bytes()
+            return None
+
+        def load_vector(plan):
+            return tuple(sorted((row["sat"] for row in plan[1]), reverse=True))
+
+        steps = [default_routes, *(partial(waypoint_move, step=i) for i in range(rounds))]
+        run_pipeline(steps, load_vector, on_accept=lambda plan: output.write_bytes(plan[2]))
 
 
 if __name__ == "__main__":

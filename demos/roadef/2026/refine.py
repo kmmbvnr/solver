@@ -2,11 +2,13 @@
 import argparse
 import json
 import time
+from functools import partial
 from pathlib import Path
 
 import numpy as np
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import shortest_path
+from shiftopt import run_pipeline
 from solve import routing_table
 
 
@@ -27,14 +29,27 @@ def refine(folder, name, seed, out):
     # A changed two-segment route can remove two segments and add two.
     # Two adjacent periods can have disjoint sets of modified demands.
     limit = budget//8
-    routes = []
-    for t,vol in enumerate(volumes):
+    def period_table(t):
         closed = next((x["links"] for x in scenario["interventions"] if x["t"]==t), [])
         use = ~np.isin([e["id"] for e in g["links"]],closed)
         dist = shortest_path(csr_matrix((metric[use],(a[use],b[use])),shape=(n,n)),directed=True)
         p = routing_table(dist,a,b,metric,use)
-        via = base.copy()
-        load = vol @ (p[s,via]+p[via,d]) / cap
+        return dist, p
+
+    def static_seed(plan, deadline):
+        loads = []
+        for t, vol in enumerate(volumes):
+            _, p = period_table(t)
+            loads.append(vol @ (p[s, base] + p[base, d]) / cap)
+            del p
+        return [base] * len(volumes), loads
+
+    def improve_period(plan, deadline, *, t):
+        waypoints, loads = plan
+        via = waypoints[t].copy()
+        load = loads[t]
+        vol = volumes[t]
+        dist, p = period_table(t)
         used = set()
         for _ in range(limit):
             top = np.argsort(-load)
@@ -72,8 +87,20 @@ def refine(folder, name, seed, out):
             j,k,load = best
             used.add(j)
             via[j] = k
-        routes.extend({"d":int(j),"t":t,"w":[int(via[j])]} for j in np.flatnonzero(via!=s))
         print(json.dumps({"period":t,"changes":len(used),"peak":load.max()}),flush=True)
+        if not used:
+            return None
+        next_via, next_loads = waypoints.copy(), loads.copy()
+        next_via[t], next_loads[t] = via, load
+        return next_via, next_loads
+
+    def load_vector(plan):
+        return tuple(np.sort(np.concatenate(plan[1]))[::-1].round(9))
+
+    steps = [static_seed, *(partial(improve_period, t=t) for t in range(len(volumes)) if limit)]
+    waypoints, _ = run_pipeline(steps, load_vector)
+    routes = [{"d": int(j), "t": t, "w": [int(via[j])]}
+              for t, via in enumerate(waypoints) for j in np.flatnonzero(via != s)]
     out.write_text(json.dumps({"srpaths":routes}))
     print(json.dumps({"seconds":round(time.monotonic()-started,3)}))
 

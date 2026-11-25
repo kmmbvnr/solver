@@ -8,7 +8,7 @@ import numpy as np
 from numba import njit
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import shortest_path
-from shiftopt import Model, MINIMIZE, quicksum
+from shiftopt import Model, MINIMIZE, quicksum, run_pipeline
 
 
 @njit
@@ -30,7 +30,7 @@ def routing_table(dist, a, b, metric, active):
     return frac
 
 
-def solve(folder, name, seconds, out):
+def solve(folder, name, seconds, out, *, build_table=routing_table):
     start = time.monotonic()
     def read(kind):
         return json.loads((folder / f"{name}-{kind}.json").read_text())
@@ -46,21 +46,30 @@ def solve(folder, name, seconds, out):
     for t in range(periods):
         use = ~np.isin([e["id"] for e in links], closed.get(t, []))
         dist = shortest_path(csr_matrix((metric[use], (a[use], b[use])), shape=(n, n)), directed=True)
-        p = routing_table(dist, a, b, metric, use)
+        p = build_table(dist, a, b, metric, use)
         path.append(p)
         distance.append(dist)
         loads.append(volume[t] @ p[s,d] / cap)
     loads = np.asarray(loads)
     # Using the same waypoints in all periods incurs no reconfiguration cost.
-    via = s.copy()
+    expires = start + seconds
+    exhausted = False
     rng = np.random.default_rng(7)
-    def write():
+    iteration = -1
+    detours = 0
+
+    def write(plan):
+        nonlocal detours
+        via, _ = plan
+        detours = int(np.count_nonzero(via != s))
         routes = [{"d":int(j), "t":t, "w":[int(via[j])]} for j in np.flatnonzero(via != s) for t in range(periods)]
         out.write_text(json.dumps({"srpaths":routes}))
-    write()
-    for iteration in range(100):
-        if time.monotonic()-start >= seconds:
-            break
+    def static_routes(plan, deadline):
+        return s.copy(), loads
+
+    def improve_routes(plan, deadline):
+        nonlocal exhausted
+        via, loads = plan
         peak = loads.max()
         hot = np.argsort(loads, axis=1)[:, -7:]
         pressure = (loads[np.arange(periods)[:,None],hot]/peak)**8
@@ -94,7 +103,8 @@ def solve(folder, name, seconds, out):
                     options.append((int(j),int(k)))
                     deltas.append(delta.ravel())
         if not options:
-            break
+            exhausted = True
+            return None
         matrix = np.stack(deltas,axis=1)
         model = Model(threads=1)
         variables = [model.addVar(vtype="B") for _ in options]
@@ -117,22 +127,39 @@ def solve(folder, name, seconds, out):
             excess.append(over)
         model.setObjective(worst + .02*quicksum(excess), MINIMIZE)
         model.setStart(zip(variables, np.zeros(len(options))))
-        left = seconds - (time.monotonic()-start)
+        left = min(expires, deadline) - time.monotonic()
         if left < .05:
-            break
+            exhausted = True
+            return None
         res = model.optimize(time_limit=min(left, 5.),mip_gap=.001)
         if not res.has_solution:
-            continue
+            return None
         pick = [i for i,var in enumerate(variables) if res.value(var)>.5]
         trial = loads + matrix[:,pick].sum(axis=1,dtype=float).reshape(loads.shape)
-        if tuple(np.sort(trial.ravel())[::-1].round(8)) < tuple(np.sort(base)[::-1].round(8)):
-            for k in pick:
-                j,w = options[k]
-                via[j] = w
-            loads = trial
-            write()
-        print(json.dumps(dict(iteration=iteration,initial=float(peak),peak=float(loads.max()),
-                              detours=int(sum(via != s)),seconds=round(time.monotonic()-start,3))),flush=True)
+        proposal = via.copy()
+        for k in pick:
+            j, w = options[k]
+            proposal[j] = w
+        return proposal, trial
+
+    def stages():
+        nonlocal iteration
+        yield static_routes
+        for iteration in range(100):
+            if exhausted or time.monotonic() >= expires:
+                break
+            yield improve_routes
+
+    def load_vector(plan):
+        return tuple(np.sort(plan[1].ravel())[::-1].round(8))
+
+    def report(step, old, proposed, elapsed):
+        if step is improve_routes and proposed is not None:
+            print(json.dumps(dict(iteration=iteration, initial=float(old[0]),
+                                  peak=float(min(old, proposed)[0]), detours=detours,
+                                  seconds=round(time.monotonic() - start, 3))), flush=True)
+
+    run_pipeline(stages(), load_vector, on_accept=write, on_step=report)
 
 
 if __name__ == "__main__":
