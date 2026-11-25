@@ -78,7 +78,7 @@ class Load:
         return x, y, length, width
 
 
-def pack_group(rows, truck, ident, limits, combine, beam_width=0):
+def pack_group(rows, truck, ident, limits, combine, beam_width=0, deadline=float("inf")):
     """Build homogeneous stacks and preserve the identity of every shipped unit."""
     groups = defaultdict(list)
     for r in rows:
@@ -122,7 +122,7 @@ def pack_group(rows, truck, ident, limits, combine, beam_width=0):
         priority=lambda state: (len(state[2]), sum(max(load.ends) for load in state[2])),
         complete=lambda state: state[0] == 3,
         width=beam_width,
-        deadline=monotonic() + 10,
+        deadline=min(deadline, monotonic() + 10),
     )
     return best
 
@@ -183,16 +183,44 @@ def solve(folder, output, combine=True, beam_width=0):
         bottom_limit[ident, key[-1]] = number(r["Max weight on the bottom item in stacks"])
         eligible[key].add((r["Arrival time"], ident))
     eligible = {k: sorted(v) for k, v in eligible.items()}
-    batches = defaultdict(list)
-    for r in records(folder, "items"):
-        key = route_key(r)
-        schedule = eligible[key]
-        i = bisect_right(schedule, (r["Latest arrival time"], chr(0x10FFFF))) - 1
-        if i < 0 or schedule[i][0] < r["Earliest arrival time"]:
-            raise ValueError(f"No eligible departure for {r['Item ident']}")
-        ident = schedule[i][1]
-        group = (ident, key[1], r["Supplier dock"], r["Plant dock"])
-        batches[group].append(r)
+    def assign_and_pack(plan, deadline):
+        batches = defaultdict(list)
+        for r in records(folder, "items"):
+            key = route_key(r)
+            schedule = eligible[key]
+            i = bisect_right(schedule, (r["Latest arrival time"], chr(0x10FFFF))) - 1
+            if i < 0 or schedule[i][0] < r["Earliest arrival time"]:
+                raise ValueError(f"No eligible departure for {r['Item ident']}")
+            ident = schedule[i][1]
+            group = (ident, key[1], r["Supplier dock"], r["Plant dock"])
+            batches[group].append(r)
+        return {group: (rows, pack_group(rows, trips[group[0]], group[0], bottom_limit, False))
+                for group, rows in batches.items()}
+
+    def repack_groups(plan, deadline, width):
+        proposal = plan.copy()
+        for group, (rows, incumbent) in plan.items():
+            if monotonic() >= deadline:
+                break
+            ident = group[0]
+            loads = pack_group(rows, trips[ident], ident, bottom_limit, True, width, deadline)
+            if len(loads) < len(incumbent):
+                proposal[group] = rows, loads
+        return proposal
+
+    def consolidate(plan, deadline):
+        return repack_groups(plan, deadline, 0)
+
+    def reorder_stacks(plan, deadline):
+        return repack_groups(plan, deadline, beam_width)
+
+    steps = [assign_and_pack]
+    if combine:
+        steps.append(consolidate)
+        if beam_width:
+            steps.append(reorder_stacks)
+    shipment = run_pipeline(steps, lambda plan: sum(len(loads) for _, loads in plan.values()))
+
     output.mkdir(parents=True, exist_ok=True)
     headers = {
         "items": "Item ident;Id truck;Id stack;Item code;X origin;Y origin;Z origin;X extremity;Y extremity;Z extremity",
@@ -206,17 +234,9 @@ def solve(folder, output, combine=True, beam_width=0):
             f = files.enter_context((output / f"output_{kind}.csv").open("w", newline=""))
             writers[kind] = csv.writer(f, delimiter=";", lineterminator="\n")
             writers[kind].writerow(header.split(";"))
-        for (ident, *_), rows in batches.items():
+        for (ident, *_), (_, loads) in shipment.items():
             t = trips[ident]
-
-            def original(plan, deadline):
-                return pack_group(rows, t, ident, bottom_limit, False)
-
-            def consolidate(plan, deadline):
-                return pack_group(rows, t, ident, bottom_limit, True, beam_width)
-
-            steps = [original, consolidate] if combine else [original]
-            for load in run_pipeline(steps, len):
+            for load in loads:
                 truck = ident if not copies[ident] else f"Q{ident[1:]}_{copies[ident]}"
                 copies[ident] += 1
                 writers["trucks"].writerow(
