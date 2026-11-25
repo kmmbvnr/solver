@@ -1,4 +1,5 @@
 """Build a bounded destroy-and-repair step for run_pipeline."""
+from functools import partial
 from math import exp, isfinite
 from random import Random
 from time import monotonic
@@ -12,6 +13,29 @@ def neighborhood_search(destroy, repair, score, *, attempts, seed=0, temperature
     A positive temperature enables Metropolis acceptance for numeric scores.
     It cools exponentially with the attempt count. The returned plan is the best seen.
     """
+    move = partial(_repair_move, destroy, repair)
+    return _search_step(move, score, attempts, seed, temperature)
+
+
+def _repair_move(destroy, repair, current, rng, deadline):
+    partial_plan = destroy(current, rng)
+    if monotonic() >= deadline:
+        return None
+    return repair(partial_plan, rng, deadline)
+
+
+def simulated_annealing(move, score, *, attempts, temperature, seed=0):
+    """Return a pipeline step for numeric minimization with exponential cooling.
+
+    move(current, rng, deadline) returns a feasible neighbor or None and
+    preserves current. The step returns the best plan visited.
+    """
+    if temperature <= 0:
+        raise ValueError("annealing requires a positive temperature")
+    return _search_step(move, score, attempts, seed, temperature)
+
+
+def _search_step(move, score, attempts, seed, temperature):
     if not isfinite(temperature) or temperature < 0:
         raise ValueError("temperature must be finite and nonnegative")
     if not isinstance(seed, int):
@@ -29,10 +53,7 @@ def neighborhood_search(destroy, repair, score, *, attempts, seed=0, temperature
         for i in range(attempts):
             if monotonic() >= deadline:
                 break
-            partial = destroy(current, rng)
-            if monotonic() >= deadline:
-                break
-            proposal = repair(partial, rng, deadline)
+            proposal = move(current, rng, deadline)
             if proposal is None:
                 continue
             value = score(proposal)
