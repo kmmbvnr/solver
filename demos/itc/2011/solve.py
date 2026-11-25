@@ -1,8 +1,8 @@
 """Compare complete XHSTT schedules produced by diversified KHE constructions."""
 import argparse
-from collections import defaultdict
 import os
 import subprocess
+from collections import defaultdict
 from functools import partial
 from operator import itemgetter
 from pathlib import Path

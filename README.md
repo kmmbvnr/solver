@@ -239,6 +239,16 @@ Each demo runs its own pipeline and writes a solution in the competition format.
 | [2011](demos/chesc/2011/) | Six HyFlex domains, 30 competition instances | Bandit vs fixed order on one short run: 16 wins, 11 ties, 3 losses |
 | [2014](demos/chesc/2014/) | Single-solver and multiple-solver batch formats on the public 2011 set | Both modes improved all 30 starting solutions in a local reproduction |
 
+## International Timetabling Competition
+
+| Edition | Tracks | Sample results (lower is better) |
+| --- | --- | --- |
+| [2002](demos/itc/2002/) | University events | competition01: 77, winner 45 |
+| [2007](demos/itc/2007/) | Exams, post-enrolment, curriculum | Exam set 1: 4,496. Event set 5: 0 unplaced, penalty 7. Curriculum comp01: 5 |
+| [2011](demos/itc/2011/) | High-school timetabling | BrazilInstance2: 0 hard, 217 soft. Western Greece 3: 0 hard, 19 soft |
+| [2019](demos/itc/2019/) | University classes, rooms and student sectioning | wbg-fal10: 116 from scratch. lums-spr18: 193 with a public warm start, winner 95 |
+| [2021](demos/itc/2021/) | Sports timetabling | Test2: 197 from scratch. Early 9: retained the public 67-cost seed |
+
 ## License
 
 ShiftOpt is licensed under the [GNU Affero General Public License, version 3 only](LICENSE). Third-party benchmark data is subject to its original terms.
