@@ -29,6 +29,15 @@ sequenceDiagram
     P-->>D: Best plan found or None
 ```
 
+## Core algorithms
+
+- `beam_search` keeps the best partial plans at each search depth.
+- `bounded_max_flow` maximizes flow subject to lower and upper edge bounds.
+- `select_candidates` selects a high-value subset under resource limits, with optional learned resource prices from `PriceOracle`.
+- `Calendar.eligible` filters job starts against resource and inventory limits.
+- `Model.fixAndOptimize` fixes selected decisions and reoptimizes the rest with HiGHS.
+- `Model.localBranch` searches with HiGHS within a limit on binary decision changes.
+
 ## ROADEF/EURO benchmarks
 
 Ranks show where ShiftOpt would place in the published standings.
