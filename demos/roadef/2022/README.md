@@ -29,3 +29,7 @@ Pass `--beam-width 1` or `--beam-width 2` to explore adjacent swaps in stack ord
 For a limited beam search, pass `--beam-width 2 --group-limit 8` to try up to eight groups that use multiple trucks. Add `--largest-first` to choose the untried group using the most trucks in the current shipment. Ties follow input order.
 
 On ten C1 instances (AS, BY, CA, CI, CL and their corresponding *2 instances), the official checker accepted all 20 plans. Largest-first reduced cost on three, tied on three and increased cost on four compared with input order. CI had the largest saving, from 9,854,100 to 9,845,100. On the five *2 instances, each ordering saved 3,600 in total relative to the other across the cases it won. Input order remains the default for budgeted runs.
+
+Pass `--lns-attempts 16` to remove at least two stack groups from the packing order, reinsert them at random positions and repack. The search minimizes truck count, breaking ties by loaded length. Add `--temperature 0.07` for Metropolis acceptance. Both modes return the best packing seen and use seed 7.
+
+On the same ten C1 instances above, strict LNS beat width-2 beam search on all ten. Median solver time was 1.88 s for LNS and 1.71 s for beam. At 16 trials per group, annealing beat strict LNS six times, tied once and lost three times. Total checker cost fell from 75,573,300 to 75,414,900. The checker accepted every plan.

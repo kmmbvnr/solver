@@ -7,6 +7,7 @@ from collections import defaultdict
 from contextlib import ExitStack
 from functools import partial
 from itertools import chain, islice, repeat
+from math import isfinite
 from pathlib import Path
 
 from time import monotonic
@@ -79,7 +80,7 @@ class Load:
         return x, y, length, width
 
 
-def pack_group(rows, truck, ident, limits, combine, beam_width=0, deadline=float("inf"), attempts=0):
+def pack_group(rows, truck, ident, limits, combine, beam_width=0, deadline=float("inf"), attempts=0, temperature=0.0):
     """Build homogeneous stacks and preserve the identity of every shipped unit."""
     groups = defaultdict(list)
     for r in rows:
@@ -119,7 +120,7 @@ def pack_group(rows, truck, ident, limits, combine, beam_width=0, deadline=float
             length = sum(max(load.ends) for load in loads)
             return len(loads) + length / (1 + len(loads) * truck["Length"])
 
-        search = neighborhood_search(destroy, repair, score, attempts=attempts, seed=7)
+        search = neighborhood_search(destroy, repair, score, attempts=attempts, seed=7, temperature=temperature)
         result = run_pipeline([search], score, initial=(list(range(len(order))), base),
                               seconds=max(0., deadline - monotonic()))
         return result[1]
@@ -195,7 +196,11 @@ def pack_order(order, truck, ident, limits):
     return loads
 
 
-def solve(folder, output, combine=True, beam_width=0, group_limit=None, largest_first=False, attempts=0):
+def solve(folder, output, combine=True, beam_width=0, group_limit=None, largest_first=False, attempts=0, temperature=0.0):
+    if not isfinite(temperature) or temperature < 0:
+        raise ValueError("temperature must be finite and nonnegative")
+    if temperature and not attempts:
+        raise ValueError("temperature requires neighborhood attempts")
     if attempts < 0 or (attempts and (not combine or beam_width)):
         raise ValueError("neighborhood attempts require consolidation and an exclusive search budget")
     if group_limit is not None and (group_limit < 0 or not (combine and beam_width)):
@@ -233,7 +238,7 @@ def solve(folder, output, combine=True, beam_width=0, group_limit=None, largest_
             if monotonic() >= deadline:
                 break
             ident = group[0]
-            loads = pack_group(rows, trips[ident], ident, bottom_limit, True, width, deadline, trials)
+            loads = pack_group(rows, trips[ident], ident, bottom_limit, True, width, deadline, trials, temperature)
             if len(loads) < len(incumbent):
                 proposal[group] = rows, loads
         return proposal
@@ -341,5 +346,6 @@ if __name__ == "__main__":
     parser.add_argument("--group-limit", type=int, help="limit the number of groups to reorder")
     parser.add_argument("--largest-first", action="store_true", help="prioritize groups using the most trucks")
     parser.add_argument("--lns-attempts", type=int, default=0, help="destroy-and-repair trials per group")
+    parser.add_argument("--temperature", type=float, default=0.0, help="initial neighborhood search temperature")
     args = parser.parse_args()
-    solve(args.instance, args.output, not args.rows_only, args.beam_width, args.group_limit, args.largest_first, args.lns_attempts)
+    solve(args.instance, args.output, not args.rows_only, args.beam_width, args.group_limit, args.largest_first, args.lns_attempts, args.temperature)
