@@ -20,3 +20,5 @@ The default run took a median of 4.64 seconds and a maximum of 55.39 seconds on 
 With `--recombine-seconds 3`, the last stage builds a second calendar plan (seed 17, up to 8 seconds), pools complete routes from both plans and gives HiGHS 3 seconds to select compatible routes and rebalance deliveries. Both parents remain eligible.
 
 On 12 final instances (13–19 and 24–28), the official checker accepted every pooled result. Pooling beat the better of two separately optimized parents on nine and tied on three within 1e-9. Each individual pool solve also received 3 seconds. On instance 25, the cost per unit fell from 0.018602 for the better separately optimized parent to 0.018232. The published rank above uses the default pipeline.
+
+Pass `--sequence` to score the alternate calendar after quantity optimization and retiming. On instances 13–19 and 24–28, both comparisons started from the same saved default plan and used the same seed-17 donor. Treating the three moves as one proposal beat accepting each move separately on instances 14, 19 and 25 and tied on nine. The official checker accepted all 24 results. On instance 19 the ratio fell from 0.056852 to 0.055209.

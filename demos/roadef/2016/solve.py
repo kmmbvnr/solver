@@ -18,6 +18,7 @@ from roadef_feasible import solve as assign_with_cp_sat
 from instance_xml import table
 from roadef_quantities import optimize as optimize_volumes
 from shiftopt import run_pipeline
+from shiftopt.sequence import move_sequence
 from route_search import RouteSearch
 from roadef_route_pool import export, load_plans, optimize as optimize_routes
 from instance_xml import atomic_output
@@ -145,7 +146,7 @@ def pooled_routes(instance, work, left, right, deadline):
     return load_plans([child])[0]
 
 
-def solve(instance, output, *, route_mip=False, recombine_seconds=0):
+def solve(instance, output, *, route_mip=False, recombine_seconds=0, sequence=False):
     """Solve an official input from scratch, publishing a plan after each stage."""
     instance, output = Path(instance), Path(output)
     if instance.resolve() == output.resolve():
@@ -198,13 +199,17 @@ def solve(instance, output, *, route_mip=False, recombine_seconds=0):
             return load_plans([candidate])[0]
 
         steps = [calendar, assignment_fallback, volumes, route_step, timing_step]
-        if recombine_seconds > 0:
+        if recombine_seconds > 0 or sequence:
             def alternate_calendar(plan, deadline):
                 if search(instance, candidate, min(8, deadline - time.monotonic()), 17,
                           rotate=True, fleet_aware=True):
                     return load_plans([candidate])[0]
                 return None
 
+            if sequence:
+                steps.append(move_sequence(alternate_calendar, volumes, timing_step))
+
+        if recombine_seconds > 0:
             def mix_routes(plan, deadline):
                 def assemble(left, right, limit):
                     return pooled_routes(instance, Path(tmp), left, right,
@@ -223,5 +228,6 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--route-mip", action="store_true", help="use the benchmark mixed-integer route pool")
     parser.add_argument("--recombine-seconds", type=float, default=0, help="pool routes with a second calendar plan and set the pool solve budget")
+    parser.add_argument("--sequence", action="store_true", help="score an alternate calendar after quantity and timing repair")
     args = parser.parse_args()
-    print(json.dumps(solve(args.instance, args.output, route_mip=args.route_mip, recombine_seconds=args.recombine_seconds)), flush=True)
+    print(json.dumps(solve(args.instance, args.output, route_mip=args.route_mip, recombine_seconds=args.recombine_seconds, sequence=args.sequence)), flush=True)
