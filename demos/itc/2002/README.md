@@ -9,6 +9,8 @@ python -m demos.itc.2002.solve demos/itc/2002/competition01.tim /tmp/competition
 
 On competition01 the archived validator confirmed a feasible timetable at penalty **261**, with seed 1 and a 60-second limit. The previous UniTime pipeline scored 77 and the competition winner scored 45.
 
+With seed 1, setting `--seconds 300` still returned 261 in 2.9 seconds. The default annealing step stops after 50,000 attempts. In a separate timed run, the pipeline repeated that step from the best timetable with successive seeds. Including construction, the penalty reached 217 at 60 seconds and 216 at 300 seconds. Both schedules passed the validator.
+
 ## Previous UniTime pipeline
 
 On `competition01` the archived validator confirmed a complete timetable for all 400 events with penalty **77**. Competition winner Philipp Kostuch scored **45** on this instance. Wall-clock search results can vary. [Data and validators](https://github.com/tomas-muller/cpsolver-itc2007) · [Historical results, Table 2](https://iridia.ulb.ac.be/~mbiro/paperi/ChiBirSocRos2006js.pdf)

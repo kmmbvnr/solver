@@ -20,6 +20,16 @@ All three Python schedules passed independent feasibility and cost checks. These
 
 [Input archive and validator source](https://github.com/tomas-muller/cpsolver-itc2007) · [Competition standings](https://www.eeecs.qub.ac.uk/itc2007/winner/finalorder.htm) · [Müller's results](https://www.unitime.org/present/patat08itc.pdf)
 
+## One minute versus five minutes
+
+With seed 1 and `--seconds 300`, the default pipeline finished in 1.6–23.8 seconds across the three instances. Each run exhausted its 50,000 annealing attempts. A separate experiment repeated the same annealing step from the best timetable, starting each step at temperature 8 with the next integer seed. The 60-second checkpoint includes construction. Each run continued from that checkpoint to 300 seconds. Independent checks confirmed feasibility and cost at both checkpoints.
+
+| Instance | Default | 60 seconds | 300 seconds | Previous UniTime sample |
+| --- | ---: | ---: | ---: | ---: |
+| Exam set 1 | 8,088 | 6,246 | 5,712 | 4,496 |
+| Post-enrolment set 5 | 1,337 | 963 | 722 | 7 |
+| Curriculum comp01 | 25 | 16 | 15 | 5 |
+
 ## Comparing local search steps
 
 Pass `--search greedy|hill|deluge|anneal` and `--attempts N` to the demo.
