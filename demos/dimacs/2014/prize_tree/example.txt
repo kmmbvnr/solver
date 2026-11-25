@@ -1,0 +1,13 @@
+SECTION Graph
+Nodes 4
+Edges 3
+E 1 2 2
+E 2 3 1
+E 2 4 1
+END
+SECTION Terminals
+RootP 1
+TP 3 6
+TP 4 4
+END
+EOF
