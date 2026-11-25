@@ -25,3 +25,7 @@ Pass `--beam-width 1` or `--beam-width 2` to explore adjacent swaps in stack ord
 | AS | 3,775,800 | 3,774,000 | 3,772,200 |
 | BY | 22,753,200 | 22,510,200 | 22,423,800 |
 | CA | 2,565,300 | 2,552,700 | 2,552,700 |
+
+For a limited beam search, pass `--beam-width 2 --group-limit 8` to try up to eight groups that use multiple trucks. Add `--largest-first` to choose the untried group using the most trucks in the current shipment. Ties follow input order.
+
+On ten C1 instances (AS, BY, CA, CI, CL and their corresponding *2 instances), the official checker accepted all 20 plans. Largest-first reduced cost on three, tied on three and increased cost on four compared with input order. CI had the largest saving, from 9,854,100 to 9,845,100. On the five *2 instances, each ordering saved 3,600 in total relative to the other across the cases it won. Input order remains the default for budgeted runs.

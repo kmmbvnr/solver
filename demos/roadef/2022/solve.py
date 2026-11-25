@@ -5,6 +5,7 @@ import csv
 from bisect import bisect_right
 from collections import defaultdict
 from contextlib import ExitStack
+from functools import partial
 from itertools import chain, islice, repeat
 from pathlib import Path
 
@@ -171,7 +172,11 @@ def pack_order(order, truck, ident, limits):
     return loads
 
 
-def solve(folder, output, combine=True, beam_width=0):
+def solve(folder, output, combine=True, beam_width=0, group_limit=None, largest_first=False):
+    if group_limit is not None and (group_limit < 0 or not (combine and beam_width)):
+        raise ValueError("a group limit requires beam search and a nonnegative budget")
+    if largest_first and group_limit is None:
+        raise ValueError("largest-first requires a group limit")
     trips, bottom_limit = {}, {}
     eligible = defaultdict(set)
     numeric = "Length Width Height EMmm EMmr CM CJfm CJfc CJfh EM EJhr EJcr EJeh".split()
@@ -212,14 +217,38 @@ def solve(folder, output, combine=True, beam_width=0):
         return repack_groups(plan, deadline, 0)
 
     def reorder_stacks(plan, deadline):
-        return repack_groups(plan, deadline, beam_width)
+        if group_limit is None:
+            return repack_groups(plan, deadline, beam_width)
+
+        def try_group(shipment, deadline, *, group):
+            rows, incumbent = shipment[group]
+            ident = group[0]
+            loads = pack_group(rows, trips[ident], ident, bottom_limit, True, beam_width, deadline)
+            if len(loads) < len(incumbent):
+                return {**shipment, group: (rows, loads)}
+            return None
+
+        groups = {partial(try_group, group=key): key for key, (_, loads) in plan.items()
+                  if len(loads) > 1}
+
+        def choose_group(shipment, history, remaining):
+            tried = {trial.step for trial in history}
+            return max((step for step in groups if step not in tried),
+                       key=lambda step: len(shipment[groups[step]][1]), default=None)
+
+        return run_pipeline(tuple(groups), truck_count, initial=plan, max_steps=group_limit,
+                            seconds=max(0., deadline - monotonic()),
+                            policy=choose_group if largest_first else None)
+
+    def truck_count(plan):
+        return sum(len(loads) for _, loads in plan.values())
 
     steps = [assign_and_pack]
     if combine:
         steps.append(consolidate)
         if beam_width:
             steps.append(reorder_stacks)
-    shipment = run_pipeline(steps, lambda plan: sum(len(loads) for _, loads in plan.values()))
+    shipment = run_pipeline(steps, truck_count)
 
     output.mkdir(parents=True, exist_ok=True)
     headers = {
@@ -280,5 +309,7 @@ if __name__ == "__main__":
     parser.add_argument("--rows-only", action="store_true", help="disable stack consolidation")
     parser.add_argument("--beam-width", type=int, choices=range(3), default=0,
                         help="explore alternative stack orders (0 disables search)")
+    parser.add_argument("--group-limit", type=int, help="limit the number of groups to reorder")
+    parser.add_argument("--largest-first", action="store_true", help="prioritize groups using the most trucks")
     args = parser.parse_args()
-    solve(args.instance, args.output, not args.rows_only, args.beam_width)
+    solve(args.instance, args.output, not args.rows_only, args.beam_width, args.group_limit, args.largest_first)
