@@ -17,7 +17,8 @@ flowchart TD
     Next -->|Step available| Run["Run step with best plan and deadline"]
     UCB -->|Selected step| Run
     Choose -->|Selected step| Run
-    Run <-->|Optional exchange search| Chain["Displace an assignment and try to close the chain<br/>within depth, node and time limits"]
+    Run <-->|Search within a step| Search["Beam or bounded best-first search<br/>Neighborhood, ejection chain or reassignment"]
+    Run <-->|Compound step| Seq["Move 1 → … → Move K<br/>Return the final proposal for one reward"]
     Run <-->|Optional model solve| Ext["External solver<br/>HiGHS or CP-SAT"]
     Run --> Select["Compare proposal with best plan"]
     Select --> Keep["Keep first feasible plan or strict improvement"]
@@ -137,12 +138,20 @@ Choose steps in the list or with `policy=`. Each neighborhood step has its own a
 
 ### Compare step-selection policies
 
-The same bag example can give the choice between beam search and neighborhood search to UCB. It tries each operator once, then uses mean reward and an exploration bonus. The constructor runs separately from the competing operators.
+UCB can choose between a sequence of moves, beam search and neighborhood search. In this bag example, the sequence releases all but the heaviest packed item, then refills the bag in descending weight order. It tries each operator once, then uses mean reward and an exploration bonus. The constructor runs separately from the competing operators.
 
 ```python
-from shiftopt import bandit_policy
+from shiftopt import bandit_policy, move_sequence
 
-moves = [pack_with_beam, search]
+def keep_heaviest(bag, deadline):
+    return (max(bag),) if bag else ()
+
+def refill_heaviest(kept, deadline):
+    available = (Counter(weights) - Counter(kept)).elements()
+    return fill(list(kept), sorted(available, reverse=True))
+
+repack = move_sequence(keep_heaviest, refill_heaviest)
+moves = [repack, pack_with_beam, search]
 policy = bandit_policy(moves, construct=greedy, exploration=0.5)
 plan = run_pipeline([greedy, *moves], score, policy=policy, max_steps=6,
                     gain=lambda old, new: old - new, seconds=5)
@@ -155,6 +164,9 @@ For assignments that block one another, build a step with `ejection_chain(start,
 ## Core algorithms
 
 - `neighborhood_search` runs destroy-and-repair trials with strict or Metropolis acceptance.
+- `move_sequence` passes intermediate proposals between moves and scores the final plan once.
+- `reassignment_search` tries transfers, rebuilds the affected assignments and compares full plan costs.
+- `bounded_best_first` searches across depths with a bounded frontier, retaining improvements across restarts.
 - `beam_search` keeps the best partial plans at each search depth.
 - `bounded_max_flow` maximizes flow subject to lower and upper edge bounds.
 - `select_candidates` selects a high-value subset under resource limits, with optional learned resource prices from `PriceOracle`.

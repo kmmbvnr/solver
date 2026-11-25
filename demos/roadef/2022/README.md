@@ -35,3 +35,5 @@ Pass `--lns-attempts 16` to remove at least two stack groups from the packing or
 On the same ten C1 instances above, strict LNS beat width-2 beam search on all ten. Median solver time was 1.88 s for LNS and 1.71 s for beam. At 16 trials per group, annealing beat strict LNS six times, tied once and lost three times. Total checker cost fell from 75,573,300 to 75,414,900. The checker accepted every plan.
 
 Add `--reassign 64` to try up to 64 transfers between eligible departures after packing. The step repacks both affected groups and accepts a transfer only if total transportation and early-delivery cost falls. With `--lns-attempts 16 --temperature 0.07`, transfers reduced cost on all ten C1 instances above, from 75,414,900 to 75,328,069 in total. The checker accepted all 20 paired outputs. These improvements added zero tournament points on this subset.
+
+The same settings also lowered cost on all five held-out X instances (AS, BY, CC, CI and DO), from 44,441,700 to 44,384,055. All ten X plans passed the checker. Including the fifteen tested improvements in the full standings still gives 460 points.

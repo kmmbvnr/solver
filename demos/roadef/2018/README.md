@@ -1,6 +1,6 @@
 # ROADEF/EURO 2018 · Glass Cutting
 
-ShiftOpt scored **134 points, placing 7th of 20** in the B+X final comparison. S6 is sixth with 138 points. The official checker accepted all 90 plans in a three-way comparison on the 30 instances. With a shared 170-second search budget on the same Mac, beam search scored 121, bounded best-first search scored 111, and running beam followed by best-first scored 134. The combined search reduced waste on 11 instances and tied on 19 compared with beam alone. [Per-instance comparison](search.csv) · [Official standings and workbook](https://roadef.org/challenge/2018/en/finalResults.php).
+ShiftOpt scored **134 points, placing 7th of 20** in the B+X final comparison. S6 is sixth with 138 points. The official checker accepted all 90 plans in a three-way comparison on the 30 instances. With a shared 170-second search budget on the same Mac with four concurrent instances per batch, beam search scored 121, bounded best-first search scored 111, and running beam followed by best-first scored 134. The combined search reduced waste on 11 instances and tied on 19 compared with beam alone. [Per-instance comparison](search.csv) · [Official standings and workbook](https://roadef.org/challenge/2018/en/finalResults.php).
 
 The default pipeline runs five stages.
 
@@ -8,7 +8,6 @@ The default pipeline runs five stages.
 2. `shelves` builds an independent plan with multiple items per row.
 3. `repair` rebuilds the last four plates of the best plan.
 4. `beam` searches item placements one at a time. At each depth it keeps alternative partial layouts ranked by estimated waste, allowing the active strip to widen as rows grow. It tries beam widths of 12, 48 and 128 under the shared deadline.
-
 5. `imba` explores partial cuts from different depths in one priority queue. It restarts with capacities 1, 4, 16, 64 and 256. The used plate width gives a lower bound independently of the waste-density guide.
 
 In the earlier four-stage benchmark, compared with the archived three-stage run, waste fell on 29 instances, with a median reduction of 52.6% across all 30. [Four-stage results](beam.csv) · [Three-stage results](pipeline.csv) · [Original strip baseline](benchmark.csv).
