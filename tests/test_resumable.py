@@ -24,3 +24,13 @@ class ResumeTests(unittest.TestCase):
             result = step(result, inf)
         self.assertEqual((actual, result), (expected, best))
         self.assertEqual(step(-1000, 0), -1000)
+
+    def test_better_external_incumbent_replaces_current_mid_cycle(self):
+        from functools import partial
+        trace = []
+        step = ResumableAnnealing(partial(trace_move, trace), int, attempts=1, cycle_attempts=10,
+                                 temperature=8, seed=12)
+        step(50, inf)
+        step(-1000, inf)
+        self.assertEqual(trace[-1][0], -1000)
+        self.assertEqual(step.position, 2)
