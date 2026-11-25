@@ -1,0 +1,18 @@
+<instance>
+  <network><nodes>
+    <node id="0" type="0"><cx>0</cx><cy>0</cy></node>
+    <node id="1" type="1"><cx>4</cx><cy>0</cy></node>
+    <node id="2" type="1"><cx>5</cx><cy>1</cy></node>
+    <node id="3" type="2"><cx>3</cx><cy>0</cy><custom><cs_type>fast</cs_type></custom></node>
+  </nodes></network>
+  <fleet><vehicle_profile><departure_node>0</departure_node><arrival_node>0</arrival_node>
+    <max_travel_time>40</max_travel_time><speed_factor>1</speed_factor>
+    <custom><consumption_rate>1</consumption_rate><battery_capacity>8</battery_capacity>
+    <charging_functions><function cs_type="fast">
+      <breakpoint><battery_level>0</battery_level><charging_time>0</charging_time></breakpoint>
+      <breakpoint><battery_level>6</battery_level><charging_time>1</charging_time></breakpoint>
+      <breakpoint><battery_level>8</battery_level><charging_time>2</charging_time></breakpoint>
+    </function></charging_functions></custom>
+  </vehicle_profile></fleet>
+  <requests><request node="1"><service_time>1</service_time></request><request node="2"><service_time>1</service_time></request></requests>
+</instance>
