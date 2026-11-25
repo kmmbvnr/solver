@@ -243,7 +243,7 @@ Each demo runs its own pipeline and writes a solution in the competition format.
 
 | Edition | Tracks | Sample results (lower is better) |
 | --- | --- | --- |
-| [2002](demos/itc/2002/) | University events | 20/20 feasible in 60 s each, total penalty 1,645. Beat the winner on instance 13 |
+| [2002](demos/itc/2002/) | University events | 20/20 feasible in 60 s each, total penalty 1,645. Reconstructed 4th of 12 |
 | [2007](demos/itc/2007/) | Exams, post-enrolment, curriculum | Exam set 1: 4,496. Event set 5: 0 unplaced, penalty 7. Curriculum comp01: 5 |
 | [2011](demos/itc/2011/) | High-school timetabling | BrazilInstance2: 0 hard, 217 soft. Western Greece 3: 0 hard, 19 soft |
 | [2019](demos/itc/2019/) | University classes, rooms and student sectioning | wbg-fal10: 116 from scratch. lums-spr18: 193 with a public warm start, winner 95 |
