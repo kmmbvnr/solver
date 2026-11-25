@@ -7,7 +7,51 @@ from heapq import heappop, heappush
 from shiftopt import run_pipeline
 
 
+graph = []
+edges = []
+terminals = []
+
+
+def connect(root):
+    dist = {root: 0}
+    parent = {}
+    queue = [(0, root)]
+    while queue:
+        value, a = heappop(queue)
+        if value != dist[a]:
+            continue
+        for b, w, i in graph[a]:
+            if value + w < dist.get(b, float("inf")):
+                dist[b] = value + w
+                parent[b] = (a, i)
+                heappush(queue, (dist[b], b))
+    connected = {root}
+    chosen = []
+    for v in terminals:
+        while v not in connected:
+            if v not in parent:
+                raise ValueError("disconnected terminals")
+            connected.add(v)
+            v, i = parent[v]
+            chosen.append(i)
+    return {"cost": sum(edges[i][2] for i in chosen),
+            "edges": [edges[i][:2] for i in chosen]}
+
+
+def first_root(plan, deadline):
+    return connect(terminals[0])
+
+
+def last_root(plan, deadline):
+    return connect(terminals[-1])
+
+
+def score(plan):
+    return plan["cost"]
+
+
 def solve(stream, seconds=float("inf")):
+    global graph, edges, terminals
     edges, terminals = [], []
     for line in stream:
         fields = line.split()
@@ -29,40 +73,6 @@ def solve(stream, seconds=float("inf")):
     for i, (a, b, w) in enumerate(edges):
         graph[a].append((b, w, i))
         graph[b].append((a, w, i))
-
-    def connect(root):
-        dist = {root: 0}
-        parent = {}
-        queue = [(0, root)]
-        while queue:
-            value, a = heappop(queue)
-            if value != dist[a]:
-                continue
-            for b, w, i in graph[a]:
-                if value + w < dist.get(b, float("inf")):
-                    dist[b] = value + w
-                    parent[b] = (a, i)
-                    heappush(queue, (dist[b], b))
-        connected = {root}
-        chosen = []
-        for v in terminals:
-            while v not in connected:
-                if v not in parent:
-                    raise ValueError("disconnected terminals")
-                connected.add(v)
-                v, i = parent[v]
-                chosen.append(i)
-        return {"cost": sum(edges[i][2] for i in chosen),
-                "edges": [edges[i][:2] for i in chosen]}
-
-    def first_root(plan, deadline):
-        return connect(terminals[0])
-
-    def last_root(plan, deadline):
-        return connect(terminals[-1])
-
-    def score(plan):
-        return plan["cost"]
 
     plan = run_pipeline([first_root, last_root], score, seconds=seconds)
     if plan is None:

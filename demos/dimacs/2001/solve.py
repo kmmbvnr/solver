@@ -10,7 +10,67 @@ from scipy.spatial import cKDTree
 from shiftopt import run_pipeline
 
 
+coords = {}
+
+
+def distance(a, b):
+    x, y = coords[a]
+    u, v = coords[b]
+    return int(hypot(x - u, y - v) + 0.5)
+
+
+def length(tour):
+    return sum(distance(tour[i - 1], v) for i, v in enumerate(tour))
+
+
+def sweep(plan, deadline):
+    return sorted(coords, key=coords.__getitem__)
+
+
+def nearest_neighbor(plan, deadline):
+    nodes = list(coords)
+    tree = cKDTree([coords[v] for v in nodes])
+    tour = [nodes[0]]
+    seen = set(tour)
+    while len(tour) < len(nodes):
+        if monotonic() >= deadline:
+            return None
+        k = min(8, len(nodes))
+        while True:
+            _, indices = tree.query(coords[tour[-1]], k=k)
+            choices = (nodes[i] for i in indices if nodes[i] not in seen)
+            node = next(choices, None)
+            if node is not None:
+                break
+            k = min(len(nodes), k * 2)
+        tour.append(node)
+        seen.add(node)
+    return tour
+
+
+def refine(plan, deadline):
+    tour = plan.copy()
+    for _ in range(3):
+        changed = False
+        for i in range(len(tour) - 1):
+            if monotonic() >= deadline:
+                return tour
+            for j in range(i + 1, min(len(tour), i + 48)):
+                if i == 0 and j == len(tour) - 1:
+                    continue
+                a, b = tour[i - 1], tour[i]
+                c, d = tour[j], tour[(j + 1) % len(tour)]
+                if distance(a, c) + distance(b, d) < distance(a, b) + distance(c, d):
+                    tour[i:j + 1] = reversed(tour[i:j + 1])
+                    changed = True
+                    break
+        if not changed:
+            break
+    return tour
+
+
 def solve(stream, seconds=float("inf")):
+    global coords
     header = {}
     for line in stream:
         if line.strip() == "NODE_COORD_SECTION":
@@ -29,57 +89,6 @@ def solve(stream, seconds=float("inf")):
             coords[int(node)] = (float(x), float(y))
     if not coords or len(coords) != int(header["DIMENSION"]):
         raise ValueError("coordinate count mismatch")
-
-    def distance(a, b):
-        x, y = coords[a]
-        u, v = coords[b]
-        return int(hypot(x - u, y - v) + 0.5)
-
-    def length(tour):
-        return sum(distance(tour[i - 1], v) for i, v in enumerate(tour))
-
-    def sweep(plan, deadline):
-        return sorted(coords, key=lambda v: coords[v])
-
-    def nearest_neighbor(plan, deadline):
-        nodes = list(coords)
-        tree = cKDTree([coords[v] for v in nodes])
-        tour = [nodes[0]]
-        seen = set(tour)
-        while len(tour) < len(nodes):
-            if monotonic() >= deadline:
-                return None
-            k = min(8, len(nodes))
-            while True:
-                _, indices = tree.query(coords[tour[-1]], k=k)
-                choices = (nodes[i] for i in indices if nodes[i] not in seen)
-                node = next(choices, None)
-                if node is not None:
-                    break
-                k = min(len(nodes), k * 2)
-            tour.append(node)
-            seen.add(node)
-        return tour
-
-    def refine(plan, deadline):
-        tour = plan.copy()
-        for _ in range(3):
-            changed = False
-            for i in range(len(tour) - 1):
-                if monotonic() >= deadline:
-                    return tour
-                for j in range(i + 1, min(len(tour), i + 48)):
-                    if i == 0 and j == len(tour) - 1:
-                        continue
-                    a, b = tour[i - 1], tour[i]
-                    c, d = tour[j], tour[(j + 1) % len(tour)]
-                    if distance(a, c) + distance(b, d) < distance(a, b) + distance(c, d):
-                        tour[i:j + 1] = reversed(tour[i:j + 1])
-                        changed = True
-                        break
-            if not changed:
-                break
-        return tour
 
     plan = run_pipeline([sweep, nearest_neighbor, refine], length, seconds=seconds)
     if plan is None:
