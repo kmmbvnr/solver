@@ -26,6 +26,40 @@ def student_day_cost(slots):
     return (seen ^ repeated).bit_count() + slots[-1].bit_count() + triples
 
 
+def penalized_students(slots, offset):
+    """Students paying a late, single-lecture or consecutive-lecture penalty here."""
+    busy = slots[offset]
+    if not busy or offset == 8:
+        return busy
+    others = 0
+    for i, members in enumerate(slots):
+        if i != offset:
+            others |= members
+    penalized = busy & ~others
+    for start in range(max(0, offset - 2), min(offset, 6) + 1):
+        penalized |= slots[start] & slots[start + 1] & slots[start + 2]
+    return penalized
+
+
+def penalty_event(state, rng):
+    """Mix uniform moves with events sampled by affected student count."""
+    if rng.randrange(2):
+        slot = rng.randrange(45)
+        start = slot - slot % 9
+        penalized = penalized_students(state.members[start:start + 9], slot % 9)
+        if penalized:
+            draw = rng.randrange(penalized.bit_count())
+            occupants = state.period[slot]
+            while occupants:
+                bit = occupants & -occupants
+                occupants ^= bit
+                event = bit.bit_length() - 1
+                draw -= (state.problem.members[event] & penalized).bit_count()
+                if draw < 0:
+                    return event
+    return rng.randrange(len(state.positions))
+
+
 def event_delta(positions, state, previous):
     return day_delta(state, previous, 9, student_day_cost)
 

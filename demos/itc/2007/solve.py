@@ -7,7 +7,7 @@ from itertools import count
 from operator import itemgetter
 from pathlib import Path
 
-from demos.itc.events import read_events, write_events
+from demos.itc.events import penalty_event, read_events, write_events
 from demos.itc.timetable import TimetableMoves, construct, exchange_labels
 from shiftopt import ResumableAnnealing, great_deluge, hill_climbing, run_pipeline, simulated_annealing, stagnation_policy
 
@@ -50,7 +50,10 @@ def main():
     parser.add_argument("--room-repair", action="store_true", help="include a room relaxation step (tim)")
     parser.add_argument("--resume", action="store_true", help="preserve annealing state across bursts")
     parser.add_argument("--cycle-attempts", type=int, default=50000)
+    parser.add_argument("--penalty-events", action="store_true", help="bias tim moves toward penalized student days")
     args = parser.parse_args()
+    if args.penalty_events and args.track != "tim":
+        parser.error("--penalty-events requires tim")
     if args.resume and (args.search != "anneal" or args.policy == "fixed" or args.cycle_attempts < 1):
         parser.error("--resume requires annealing, a repeating policy and a positive cycle length")
     if args.room_repair and (args.track != "tim" or args.policy == "repeat"):
@@ -79,14 +82,15 @@ def main():
         steps.append(partial(exchange_labels, problem, 1))
     polish = args.attempts // 10 if args.compactness else 0
     prefix = tuple(steps)
-    factory = partial(methods[args.search], TimetableMoves(problem), score, attempts=args.attempts - polish)
+    moves = TimetableMoves(problem, select_event=penalty_event if args.penalty_events else None)
+    factory = partial(methods[args.search], moves, score, attempts=args.attempts - polish)
     operators = [SearchBurst(factory, args.seed)]
     if args.resume:
-        operators = [ResumableAnnealing(TimetableMoves(problem), score, attempts=args.attempts,
+        operators = [ResumableAnnealing(moves, score, attempts=args.attempts,
                                         cycle_attempts=args.cycle_attempts, temperature=8, seed=args.seed)]
     if args.policy == "stagnation":
         alternate = methods["anneal" if args.search == "hill" else "hill"]
-        factory = partial(alternate, TimetableMoves(problem), score, attempts=args.attempts)
+        factory = partial(alternate, moves, score, attempts=args.attempts)
         operators.append(SearchBurst(factory, args.seed))
     if args.room_repair:
         operators.append(SearchBurst(partial(room_repair, problem, attempts=args.attempts), args.seed))

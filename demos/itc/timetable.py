@@ -28,7 +28,8 @@ class TimetableMoves:
 
     operators = ("chain", "room", "swap", "time", "relocate")
 
-    def __init__(self, problem, operators=operators):
+    def __init__(self, problem, operators=operators, *, select_event=None):
+        self.select_event = select_event
         self.operators = tuple(operators)
         available = set(TimetableMoves.operators)
         if problem.compact_move is not None:
@@ -48,7 +49,8 @@ class TimetableMoves:
             self.state = Occupancy(problem, positions)
         self.base, self.candidate, self.undo = positions, None, []
         for _ in range(12):
-            event = rng.randrange(len(positions))
+            event = (rng.randrange(len(positions)) if self.select_event is None
+                     else self.select_event(self.state, rng))
             time, room = positions[event]
             kind = rng.choice(self.operators)
             target = rng.choice(problem.periods[event])
