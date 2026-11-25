@@ -136,6 +136,43 @@ burst, seed 1 scored 713 with repeated annealing, 883 with switching and 893
 with switching plus repair. Competition validators confirmed all 21 schedules
 and their penalties. Both switching and room repair remain opt-in.
 
+## Python standings on the full post-enrolment track
+
+All 24 scored instances used the ten odd seeds 1–19 and a local budget of
+60 seconds per trial. Construction received up to 48 seconds. Each method
+received the same saved start and the remaining wall time for its instance
+and seed. Construction succeeded in 123 of 240 trials across 15 instances,
+taking a median of 1.25 seconds on successful starts. Nine instances yielded
+no complete start. Concurrent local timings are approximate.
+
+The control repeats 50,000-attempt annealing cycles. With `--resume`, the
+pipeline regains control every 3,000 attempts while the annealer keeps both
+random streams, its current timetable and its position in the 50,000-attempt
+cooling cycle. At fixed work, 25 bursts of 2,000 attempts on set 5 reproduced
+the entire final timetable of one uninterrupted cycle (penalty 1,337).
+
+| Search | Mean rank among 60 runs per instance | Place among six teams |
+| --- | ---: | ---: |
+| Repeated long annealing | 51.665 | 6 |
+| Resumable annealing | 51.658 | 6 |
+| Resumable annealing with stagnation switching | 52.273 | 6 |
+
+Across the 123 paired feasible starts, resumption beat the long control 17
+times, tied 91 and lost 15. The median paired difference was zero. Against
+resumption alone, switching to hill climbing after one idle burst won 26,
+tied 3 and lost 94. Its median paired penalty increased by 47.
+
+Each reconstructed table compares one Python configuration with the five
+historical finalists. Runs are ordered by distance to feasibility and then
+soft penalty. Missing schedules rank last and ties share the mean rank.
+This calculation reproduced all 1,200 published historical run ranks before
+inserting Python. The competition validator checked every returned schedule
+and its penalty.
+
+```sh
+python -m demos.itc.2007.solve tim demos/itc/2007/comp-2007-2-5.tim /tmp/events.sln --seconds 60 --seed 1 --policy repeat --resume --attempts 3000 --cycle-attempts 50000
+```
+
 ## Previous UniTime pipeline on the full competition set
 
 Each instance received ten runs with a local 60-second pipeline budget. The 2007 Mac calibration program is a 32-bit Intel executable, so the time limit on this Apple Silicon machine is a local choice. The ten run seeds were 1, 3, …, 19. Each run used two consecutive UniTime seeds. Every returned schedule passed a separate constraint and cost check.
