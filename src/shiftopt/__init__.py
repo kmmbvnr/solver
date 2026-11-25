@@ -1,3 +1,4 @@
+from .construction import assignment_constructor
 from .stagnation import stagnation_policy
 from .restart import restart_strength
 from .reassign import reassignment_search
@@ -14,4 +15,4 @@ from .packing import Selection, select_candidates
 
 from .pipeline import Heuristic, StepPolicy, StepTrial, run_pipeline
 
-__all__ = ["ResumableAnnealing", "stagnation_policy", "restart_strength", "reassignment_search", "move_sequence", "bounded_best_first", "bandit_policy", "ejection_chain", "neighborhood_search", "simulated_annealing", "hill_climbing", "great_deluge", "bounded_max_flow", "beam_search", "Heuristic", "StepPolicy", "StepTrial", "run_pipeline", "Model", "Solution", "MAXIMIZE", "MINIMIZE", "Selection", "select_candidates", "quicksum", "Calendar"]
+__all__ = ["assignment_constructor", "ResumableAnnealing", "stagnation_policy", "restart_strength", "reassignment_search", "move_sequence", "bounded_best_first", "bandit_policy", "ejection_chain", "neighborhood_search", "simulated_annealing", "hill_climbing", "great_deluge", "bounded_max_flow", "beam_search", "Heuristic", "StepPolicy", "StepTrial", "run_pipeline", "Model", "Solution", "MAXIMIZE", "MINIMIZE", "Selection", "select_candidates", "quicksum", "Calendar"]

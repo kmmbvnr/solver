@@ -2,9 +2,11 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
 from itertools import combinations
-from random import Random
 from time import monotonic
+
+from shiftopt import assignment_constructor
 
 
 @dataclass
@@ -193,53 +195,41 @@ def add_clique(clashes, group):
         clashes[event] |= mask ^ (1 << int(event))
 
 
-def construct(problem, seed, seconds, incumbent, deadline):
-    """Insert difficult events first and reinsert events displaced by conflicts."""
+class ConstructionState(Occupancy):
+    def options(self, event, rng):
+        times = list(self.problem.periods[event])
+        rooms = list(self.problem.rooms[event])
+        rng.shuffle(times)
+        rng.shuffle(rooms)
+        for time in times:
+            for room in rooms:
+                yield (time, room), self.blockers(event, time, room)
+
+    def assign(self, event, choice):
+        self.place(event, *choice)
+
+    def finish(self):
+        positions = tuple(self.positions)
+        return self.problem.objective(positions), positions
+
+
+def start_timetable(problem, difficulty, rng):
+    pending = sorted(range(len(difficulty)), key=lambda i: difficulty[i] * rng.uniform(0.8, 1.2))
+    return ConstructionState(problem, ()), pending
+
+
+def construct(problem, seed, seconds, incumbent, deadline, *, conflict_weight=0):
+    """Use the shared constructor with timetable domains and conflict masks."""
     if any(not times or not rooms for times, rooms in zip(problem.periods, problem.rooms)):
         return None
-    rng = Random(seed)
-    stop = min(deadline, monotonic() + seconds)
-    n = len(problem.periods)
     difficulty = [
         problem.clashes[i].bit_count() / (len(problem.periods[i]) * len(problem.rooms[i]))
-        for i in range(n)
+        for i in range(len(problem.periods))
     ]
-    while monotonic() < stop:
-        state = Occupancy(problem, ())
-        pending = sorted(range(n), key=lambda i: difficulty[i] * rng.uniform(0.8, 1.2))
-        for _ in range(n * 8):
-            if monotonic() >= stop:
-                return None
-            event = pending.pop()
-            best = None
-            best_count = n + 1
-            times = list(problem.periods[event])
-            rooms = list(problem.rooms[event])
-            rng.shuffle(times)
-            rng.shuffle(rooms)
-            for time in times:
-                for room in rooms:
-                    blocked = state.blockers(event, time, room)
-                    count = blocked.bit_count()
-                    if count < best_count:
-                        best = time, room, blocked
-                        best_count = count
-                    if count == 0:
-                        break
-                if best_count == 0:
-                    break
-            time, room, blocked = best
-            while blocked:
-                bit = blocked & -blocked
-                other = bit.bit_length() - 1
-                state.remove(other)
-                pending.insert(rng.randrange(len(pending) + 1), other)
-                blocked ^= bit
-            state.place(event, time, room)
-            if not pending:
-                positions = tuple(state.positions)
-                return problem.objective(positions), positions
-    return None
+    step = assignment_constructor(partial(start_timetable, problem, difficulty), seed=seed,
+                                  moves_per_start=max(1, len(difficulty) * 8), starts=None,
+                                  conflict_weight=conflict_weight)
+    return step(incumbent, min(deadline, monotonic() + seconds))
 
 
 def exchange_labels(problem, axis, incumbent, deadline):
