@@ -16,7 +16,10 @@ flowchart TD
     Next -->|Step available| Run["Run step with best plan and deadline"]
     Choose -->|Selected step| Run
     Run <-->|Optional model solve| Ext["External solver<br/>HiGHS or CP-SAT"]
-    Run --> Keep["Keep first feasible plan or strict improvement"]
+    Run --> Select["Compare proposal with best plan"]
+    Select --> Keep["Keep first feasible plan or strict improvement"]
+    Select -->|Optional| Mix["Recombine both parents"]
+    Mix -->|Also compare child| Keep
     Keep --> Pick
     Next -->|Sequence exhausted| End(["Return best plan"])
     Choose -->|Policy stops| End
@@ -93,8 +96,45 @@ print(plan)  # (8, 4)
 
 Greedy takes `(2, 3, 4)` for a total of 9. Inside beam search, `priority` ranks partial bags and `width=2` keeps two alternatives, yielding `(3, 8)` for 11. The last step gives HiGHS one binary variable per item and uses 11 as a lower bound. HiGHS finds `(8, 4)` for 12. The policy sees a full bag and stops. With weights `(6, 6)`, greedy fills the bag immediately and the policy stops after one trial.
 
+### Configure a search step
+
+Using the bag and `greedy` above, this example removes a random subset of packed items and refills the bag in random order. A positive temperature allows temporary setbacks inside the step. Set it to zero for strict improvement. The optional recombination callback builds a bag from the items present in either parent.
+
+```python
+from collections import Counter
+from shiftopt import neighborhood_search
+
+def remove_items(bag, rng):
+    return [weight for weight in bag if rng.random() < 0.5]
+
+def fill(kept, candidates):
+    for weight in candidates:
+        if sum(kept) + weight <= capacity:
+            kept.append(weight)
+    return tuple(kept)
+
+def repair_bag(kept, rng, deadline):
+    available = list((Counter(weights) - Counter(kept)).elements())
+    rng.shuffle(available)
+    return fill(kept, available)
+
+def combine_bags(left, right, deadline):
+    available = (Counter(left) | Counter(right)).elements()
+    return fill([], sorted(available, reverse=True))
+
+def score(bag):
+    return -sum(bag)
+
+search = neighborhood_search(remove_items, repair_bag, score,
+                             attempts=16, seed=7, temperature=0.5)
+plan = run_pipeline([greedy, search], score, recombine=combine_bags, seconds=5)
+```
+
+Choose steps in the list or with `policy=`. Each neighborhood step has its own attempt limit, seed and temperature. Positive temperatures use numeric score units. The pipeline tries `recombine` when a step returns a distinct proposal and there is an incumbent and time left. It keeps the best of both parents and the child. Omit the callback to compare just the parents.
+
 ## Core algorithms
 
+- `neighborhood_search` runs destroy-and-repair trials with strict or Metropolis acceptance.
 - `beam_search` keeps the best partial plans at each search depth.
 - `bounded_max_flow` maximizes flow subject to lower and upper edge bounds.
 - `select_candidates` selects a high-value subset under resource limits, with optional learned resource prices from `PriceOracle`.
