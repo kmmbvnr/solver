@@ -8,7 +8,7 @@ from pathlib import Path
 
 from demos.itc.events import read_events, write_events
 from demos.itc.timetable import TimetableMoves, construct, exchange_labels
-from shiftopt import run_pipeline, simulated_annealing
+from shiftopt import great_deluge, hill_climbing, run_pipeline, simulated_annealing
 
 curriculum = import_module("demos.itc.2007.curriculum")
 exams = import_module("demos.itc.2007.exams")
@@ -21,6 +21,8 @@ def main():
     parser.add_argument("output", type=Path)
     parser.add_argument("--seconds", type=int, default=60)
     parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--search", choices=("anneal", "hill", "greedy", "deluge"), default="anneal")
+    parser.add_argument("--attempts", type=int, default=50000)
     args = parser.parse_args()
     if args.track == "exam":
         problem, write = exams.read_exam(args.input), exams.write_exam
@@ -29,14 +31,17 @@ def main():
     else:
         problem, write = curriculum.read_curriculum(args.input)
     score = itemgetter(0)
-    steps = [
-        partial(construct, problem, args.seed, args.seconds * 0.8),
-        simulated_annealing(
-            TimetableMoves(problem), score, attempts=50000, temperature=8, seed=args.seed
-        ),
-    ]
+    methods = {
+        "anneal": partial(simulated_annealing, temperature=8),
+        "hill": hill_climbing,
+        "greedy": partial(hill_climbing, allow_equal=False),
+        "deluge": partial(great_deluge, margin=8, target=0),
+    }
+    steps = [partial(construct, problem, args.seed, args.seconds * 0.8)]
     if args.track == "ctt":
-        steps.insert(1, partial(exchange_labels, problem, 1))
+        steps.append(partial(exchange_labels, problem, 1))
+    steps.append(methods[args.search](TimetableMoves(problem), score,
+                                      attempts=args.attempts, seed=args.seed))
     plan = run_pipeline(steps, score, seconds=args.seconds)
     if plan is None:
         parser.exit(1, "No complete timetable found within the budget.\n")

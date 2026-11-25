@@ -20,6 +20,25 @@ All three Python schedules passed independent feasibility and cost checks. These
 
 [Input archive and validator source](https://github.com/tomas-muller/cpsolver-itc2007) · [Competition standings](https://www.eeecs.qub.ac.uk/itc2007/winner/finalorder.htm) · [Müller's results](https://www.unitime.org/present/patat08itc.pdf)
 
+## Comparing local search steps
+
+Pass `--search greedy|hill|deluge|anneal` and `--attempts N` to the demo.
+All four steps sample the same timetable moves. Greedy accepts strict improvements,
+hill climbing also accepts ties, Great Deluge uses a falling cost ceiling, and
+annealing uses a temperature. Annealing is the default.
+
+The table gives median final penalties over seeds 1, 2 and 3 at 5,000 move
+attempts per method. Each method started from the same timetable within each
+instance and seed. Great Deluge used a linear ceiling from starting cost + 8
+to zero. Annealing started at temperature 8. This comparison uses one instance
+per track and a fixed move budget.
+
+| Instance | Greedy | Hill climbing | Great Deluge | Annealing |
+| --- | ---: | ---: | ---: | ---: |
+| Exam set 1 | 11,987 | 11,962 | 13,157 | **11,814** |
+| Post-enrolment set 5 | 1,599 | **1,577** | 1,605 | 1,584 |
+| Curriculum comp01 | 496 | **307** | 506 | 342 |
+
 ## Choosing a step
 
 The demo uses a fixed sequence. To let a policy choose between short bursts of single-event moves and exchanges on the same parsed `problem`:
