@@ -191,6 +191,19 @@ Ranks show where ShiftOpt would place in the published standings.
 
 Thirty standalone DIMACS demos across eleven editions compare candidate plans or refine an incumbent through the shared pipeline. [Editions, inputs and results](demos/dimacs/).
 
+## MIP Computational Competition
+
+Each edition has an independent pipeline, a small input and checked results on public competition data.
+
+| Edition | Pipeline task |
+|---|---|
+| [2022](demos/mip/2022/) | Find and improve feasible assignments in linear MIPs |
+| [2023](demos/mip/2023/) | Reuse incumbents across a sequence of changed models |
+| [2024](demos/mip/2024/) | Reduce models and restore original solutions |
+| [2025](demos/mip/2025/) | Search restricted neighborhoods in quadratic MIPs |
+| [2026](demos/mip/2026/) | Evaluate batches of integer moves on a GPU |
+| [2027](demos/mip/2027/) | Shrink infeasible subsystems and certify the retained elements |
+
 ## License
 
 ShiftOpt is licensed under the [GNU Affero General Public License, version 3 only](LICENSE). Third-party benchmark data is subject to its original terms.
