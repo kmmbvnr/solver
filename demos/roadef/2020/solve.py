@@ -7,6 +7,7 @@ from time import monotonic
 
 import numpy as np
 from instance import read
+from pairs import pair_search
 from refine import objective_value, refine
 from repair import repair
 
@@ -69,7 +70,7 @@ def construct(data, seconds):
     }
 
 
-def solve(instance, output, seconds, refine_seconds, repair_first=False, margins=True):
+def solve(instance, output, seconds, refine_seconds, repair_first=False, margins=True, paired=False):
     data = read(instance)
     scenario_bytes = sum(
         v.nbytes
@@ -88,7 +89,8 @@ def solve(instance, output, seconds, refine_seconds, repair_first=False, margins
         return None
 
     def improve_dates(plan, deadline):
-        return refine(data, plan, min(deadline, monotonic() + refine_seconds))
+        search = pair_search if paired else refine
+        return search(data, plan, min(deadline, monotonic() + refine_seconds))
 
     steps = []
     if not repair_first and scenario_bytes <= 750_000_000:
@@ -118,6 +120,7 @@ if __name__ == "__main__":
         action="store_true",
         help="use fixed conflict penalties and original capacities",
     )
+    parser.add_argument("--paired", action="store_true", help="refine by swapping two start dates at once")
     args = parser.parse_args()
     solve(
         args.instance,
@@ -126,4 +129,5 @@ if __name__ == "__main__":
         args.refine_seconds,
         args.repair_first,
         not args.plain_repair,
+        args.paired,
     )
