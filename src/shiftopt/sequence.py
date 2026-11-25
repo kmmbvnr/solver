@@ -3,7 +3,10 @@ from time import monotonic
 
 
 def move_sequence(*moves):
-    """Forward each proposal to the next move. A declined move abandons the sequence."""
+    """Pass each proposal to the next move without mutating the incumbent.
+
+    Each move follows the pipeline step contract. Returning None abandons the sequence.
+    """
     if not moves:
         raise ValueError("supply at least one move")
 

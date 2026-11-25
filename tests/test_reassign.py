@@ -19,10 +19,8 @@ class ReassignmentTests(unittest.TestCase):
         self.assertEqual(seen, [(4, 3), (4, 3), (4, 3), (3, 1)])
 
     def test_expired_or_empty_budget_preserves_incumbent(self):
-        def moves(_):
-            yield 2
-        def rebuild(*args):
-            self.fail("unexpected rebuild")
+        def unexpected(*args):
+            self.fail("called after the budget expired")
         for attempts, deadline in ((0, float("inf")), (3, 0)):
-            step = reassignment_search(moves, rebuild, int, attempts=attempts)
+            step = reassignment_search(unexpected, unexpected, unexpected, attempts=attempts)
             self.assertEqual(step(4, deadline), 4)

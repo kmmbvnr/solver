@@ -12,8 +12,8 @@ def reassignment_search(transfers, rebuild, score, *, attempts):
         raise ValueError("attempts must be a nonnegative integer")
 
     def search(plan, deadline):
-        if plan is None:
-            return None
+        if plan is None or not attempts or monotonic() >= deadline:
+            return plan
         value = score(plan)
         moves = iter(transfers(plan))
         for _ in range(attempts):
