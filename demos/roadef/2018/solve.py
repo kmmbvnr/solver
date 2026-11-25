@@ -140,7 +140,7 @@ def write_plan(nodes, output):
         writer.writerows(nodes)
 
 
-def solve(folder, name, params, output, stages=("strips", "shelves", "repair", "beam"), seconds=170, on_step=None):
+def solve(folder, name, params, output, stages=("strips", "shelves", "repair", "beam", "imba"), seconds=170, on_step=None):
     from beam import beam_plan
     from shelves import build_shelves
 
@@ -175,7 +175,10 @@ def solve(folder, name, params, output, stages=("strips", "shelves", "repair", "
                 best = candidate
         return best
 
-    operators = {"strips": baseline, "shelves": shelves, "repair": repair, "beam": beam}
+    def imba(plan, deadline):
+        return beam_plan(problem, deadline)
+
+    operators = {"imba": imba, "strips": baseline, "shelves": shelves, "repair": repair, "beam": beam}
     result = run_pipeline([operators[s] for s in stages], used_width, seconds=seconds, on_step=on_step)
     if result is None:
         raise ValueError("No complete cutting plan found within the budget")
@@ -187,8 +190,8 @@ if __name__ == "__main__":
     parser.add_argument("folder", type=Path)
     parser.add_argument("instance")
     parser.add_argument("output", type=Path)
-    parser.add_argument("--stages", nargs="+", choices=("strips", "shelves", "repair", "beam"),
-                        default=("strips", "shelves", "repair", "beam"))
+    parser.add_argument("--stages", nargs="+", choices=("strips", "shelves", "repair", "beam", "imba"),
+                        default=("strips", "shelves", "repair", "beam", "imba"))
     parser.add_argument("--seconds", type=float, default=170)
     args = parser.parse_args()
     solve(args.folder, args.instance, Path(__file__).parent/"data/global_param.csv", args.output, args.stages, args.seconds)
