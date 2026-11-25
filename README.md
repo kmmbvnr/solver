@@ -168,8 +168,8 @@ Ranks show where ShiftOpt would place in the published standings.
 
 | Year | Problem | Rank |
 |---|---|---|
-| [2016](demos/roadef/2016/) | Inventory routing | 4th of 10 |
+| [2016](demos/roadef/2016/) | Inventory routing | 4th of 8 with B+X scores |
 | [2018](demos/roadef/2018/) | Glass cutting | 7th of 20 |
 | [2020](demos/roadef/2020/) | Maintenance scheduling | 13th of 14 |
 | [2022](demos/roadef/2022/) | Truck loading | 14th of 16 |
-| [2026](demos/roadef/2026/) | Traffic routing | Sprint: joint 30th of 54. Qualification: joint 31st of 74. |
+| [2026](demos/roadef/2026/) | Traffic routing | Sprint: joint 28th of 54. Qualification: joint 31st of 74. |

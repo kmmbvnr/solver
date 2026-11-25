@@ -13,7 +13,7 @@ python solve.py "$work/Instances_B_V25-11042016/V2.24.xml" --output "$work/plan.
 
 Pass the input XML and `plan.xml` to the official checker as two arguments.
 
-The official checker accepted all 20 default plans with HiGHS solve calls disabled. The B+X score was **8.8138 (4th of 10 if included)**. Lower is better. The original LP/MIP pipeline scored 8.7121, also fourth. Compared with that run, one instance improved, four tied and fifteen had higher costs per unit delivered. On the same twenty fixed schedules, the flow and LP quantity optima agreed within 0.00000001 kg. [Per-instance results](benchmark.csv) · [Final standings](https://roadef.org/challenge/2016/en/finalResults.php).
+The official checker accepted all 20 default plans with HiGHS solve calls disabled. The B+X score was **8.8138 (4th of 8 with B+X scores if included)**. Lower is better. The original LP/MIP pipeline scored 8.7121, also fourth. Compared with that run, one instance improved, four tied and fifteen had higher costs per unit delivered. On the same twenty fixed schedules, the flow and LP quantity optima agreed within 0.00000001 kg. [Per-instance results](benchmark.csv) · [Final standings](https://roadef.org/challenge/2016/en/finalResults.php).
 
 The default run took a median of 4.64 seconds and a maximum of 55.39 seconds on a Mac with two instances running concurrently. The original timings were measured on one Intel core.
 

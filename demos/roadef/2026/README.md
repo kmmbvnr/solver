@@ -4,7 +4,7 @@ ShiftOpt produced feasible plans for all 56 published instances. The official ch
 
 | Phase | Instances | ShiftOpt points | Rank if included | Winner |
 |---|---:|---:|---|---|
-| Sprint (A) | 20 | 0 | Joint 30th of 54 | S22, 266 points |
+| Sprint (A) | 20 | 3 | Joint 28th of 54 | S22, 266 points |
 | Qualification (X) | 12 | 0 | Joint 31st of 74 | S33, 153 points |
 
 Each instance awards one point for 15th place and up to 15 points for first. The checker sorts link loads in descending order for lexicographic comparison. Where published comparisons leave a rank interval, both ends give the same score. The organizers publish separate standings for A and X. B and C are development sets. The final evaluation uses set Y, scheduled for February 2027. [Official datasets and schedule](https://gitlab.com/Orange-OpenSource/network-optimization-tools/challenge-roadef-2026/-/tree/8362c373f3dba5733af02f30ab01160afa089b41) · [Sprint standings](https://gitlab.com/Orange-OpenSource/network-optimization-tools/challenge-roadef-2026/-/tree/8362c373f3dba5733af02f30ab01160afa089b41/sprint_results) · [Qualification standings](https://gitlab.com/Orange-OpenSource/network-optimization-tools/challenge-roadef-2026/-/tree/8362c373f3dba5733af02f30ab01160afa089b41/qualification_results).
@@ -19,6 +19,8 @@ work=$(mktemp -d)
 case_id=setX-04
 python sparse_search.py data "$case_id" ./checker124 "$work/plan.json"
 ```
+
+For A11 (`adaptive96`), use sprint checker v1.2.2 and append `--policy adaptive --rounds 96`. The plan ranks 13th on A11 and earns all three sprint points.
 
 For rows marked `period`, append `--period-only --rounds 12`. The three original qualification runs use a static route pool followed by per-period refinement. Use `solve.py` for the `dense` row and `run_static.py` for the two `shared` rows.
 
