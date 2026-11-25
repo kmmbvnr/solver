@@ -30,7 +30,7 @@ def construct(path, variant, incumbent, deadline):
         return soft, out.read_bytes()
 
 
-def fixed_resources(path, prefer_pairs, incumbent, deadline):
+def fixed_resources(path, prefer_pairs, seed, workers, incumbent, deadline):
     """Place fixed-resource lessons in single or double periods and verify with KHE."""
     tree = ET.parse(path)
     instance = tree.find("Instances/Instance")
@@ -80,7 +80,8 @@ def fixed_resources(path, prefer_pairs, incumbent, deadline):
         model.maximize(sum(doubles))
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = min(5, max(0, deadline - monotonic()))
-    solver.parameters.num_search_workers = 4
+    solver.parameters.num_search_workers = workers
+    solver.parameters.random_seed = seed
     if solver.solve(model) not in (cp_model.FEASIBLE, cp_model.OPTIMAL):
         return None
     group = ET.SubElement(ET.SubElement(tree.getroot(), "SolutionGroups"),
@@ -113,6 +114,8 @@ def main():
     parser.add_argument("output", type=Path)
     parser.add_argument("--variants", type=int, default=16)
     parser.add_argument("--seconds", type=float, default=60)
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--workers", type=int, default=4)
     args = parser.parse_args()
     root = ET.parse(args.input)
     for groups in root.findall("SolutionGroups"):
@@ -120,8 +123,8 @@ def main():
     with TemporaryDirectory() as tmp:
         path = Path(tmp) / "instance.xml"
         root.write(path, encoding="utf-8")
-        steps = [partial(fixed_resources, path, pairs) for pairs in (False, True)]
-        steps.extend(partial(construct, path, i) for i in range(args.variants))
+        steps = [partial(fixed_resources, path, pairs, args.seed, args.workers) for pairs in (False, True)]
+        steps.extend(partial(construct, path, (args.seed + i) % 2147483647) for i in range(args.variants))
         plan = run_pipeline(steps, itemgetter(0), seconds=args.seconds)
     if plan is None:
         parser.exit(1, "No schedule with zero hard cost found within the budget.\n")

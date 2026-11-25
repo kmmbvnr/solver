@@ -39,9 +39,10 @@ def main():
     parser.add_argument("input", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--seconds", type=int, default=60)
+    parser.add_argument("--seed", type=int, default=1)
     args = parser.parse_args()
     steps = [partial(search, args.track, args.input, seed, max(1, args.seconds // 3))
-             for seed in (1, 2)]
+             for seed in (args.seed, args.seed + 1)]
     if args.track == "ctt":
         steps.append(partial(exchange_rooms, args.input))
     plan = run_pipeline(steps, score, seconds=args.seconds)
