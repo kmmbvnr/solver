@@ -39,6 +39,36 @@ per track and a fixed move budget.
 | Post-enrolment set 5 | 1,599 | **1,577** | 1,605 | 1,584 |
 | Curriculum comp01 | 496 | **307** | 506 | 342 |
 
+## Incremental scores and targeted moves
+
+Local moves now update the penalties of the affected student days, exam pairs and
+rooms, or curriculum days and courses. The full objective remains available for
+construction and independent checks. At 5,000 attempts, full and incremental
+scoring returned identical plans for both hill climbing and annealing on seeds
+1, 2 and 3. Median local-search speedups were 3.2× on exam set 1, 1.5× on
+post-enrolment set 5 and 2.6×, 5.7× and 7.2× on curriculum comp01–03.
+
+On comp01, a separate 60-second hill-climbing step with the attempt cap lifted
+made a median of 2.91 million attempts with incremental scoring versus 0.91
+million with full scoring. Across seeds 1–3 the final penalties were 5, 5, 5
+versus 5, 6, 5. The six schedules passed the competition validator.
+
+For curriculum timetables, `--compactness` reserves the final 10% of move
+attempts for a separate hill-climbing step. It finds an isolated lecture and
+tries to place it next to another lecture in the same curriculum and day.
+To use it with another acceptance rule or a step policy, pass
+`TimetableMoves(problem, ("compact",))` to the search step.
+
+```sh
+python -m demos.itc.2007.solve ctt demos/itc/2007/comp01.ctt /tmp/comp01.sln --search anneal --attempts 5000 --compactness
+```
+
+At 5,000 total attempts the targeted finish improved 3 of 18 paired runs
+(three instances, three seeds, two search methods). With annealing, median
+penalty changed from 342 to 508 on comp01, from 982 to 1,297 on comp02 and
+from 548 to 502 on comp03. All targeted schedules passed the competition
+validator. The directed step is opt-in.
+
 ## Choosing a step
 
 The demo uses a fixed sequence. To let a policy choose between short bursts of single-event moves and exchanges on the same parsed `problem`:
