@@ -4,4 +4,4 @@ Enter a whitespace-separated signed permutation of `1..n`. Each output pair give
 
 The example takes one reversal, positions 2 through 4. Replaying the emitted intervals on a shuffled signed permutation of 2,000 integers recovered the identity. This heuristic gives a feasible reversal sequence. [Source](https://epubs.siam.org/doi/10.1137/S0097539793250627).
 
-From the repository root, run `python demos/dimacs/run.py 1994` for the included example or append the path to an input file.
+From the repository root, run `python demos/dimacs/1994/solve.py` for the included example or append the path to an input file.

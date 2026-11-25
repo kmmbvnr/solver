@@ -1,11 +1,38 @@
 """Color vertices by first fit in two vertex orders."""
+import argparse
+import json
+from pathlib import Path
 from heapq import heappop, heappush
 from time import monotonic
 
-from graphs import read_graph
+from shiftopt import run_pipeline
 
 
-def problem(stream):
+def read_graph(stream):
+    graph = None
+    count = 0
+    for line in stream:
+        fields = line.split()
+        if not fields or fields[0] == "c":
+            continue
+        if fields[:2] == ["p", "edge"]:
+            n, m = map(int, fields[2:])
+            graph = [set() for _ in range(n)]
+        elif fields[0] == "e" and graph is not None:
+            a, b = (int(v) - 1 for v in fields[1:])
+            if not (0 <= a < n and 0 <= b < n and a != b):
+                raise ValueError("invalid edge")
+            graph[a].add(b)
+            graph[b].add(a)
+            count += 1
+        else:
+            raise ValueError(line)
+    if graph is None or count != m:
+        raise ValueError("missing header or edge count mismatch")
+    return graph
+
+
+def solve(stream, seconds=float("inf")):
     graph = read_graph(stream)
 
     def color(order):
@@ -46,4 +73,19 @@ def problem(stream):
     def by_color_class(plan, deadline):
         return color(sorted(range(len(graph)), key=lambda v: (-plan[v], -len(graph[v]))))
 
-    return [by_degree, saturation, by_color_class], lambda plan: max(plan, default=0)
+    def score(plan):
+        return max(plan, default=0)
+
+    plan = run_pipeline([by_degree, saturation, by_color_class], score, seconds=seconds)
+    if plan is None:
+        raise ValueError("no feasible solution returned within the search budget")
+    return {"pipeline_score": score(plan), "solution": plan}
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("instance", type=Path, nargs="?", default=Path(__file__).with_name("example.txt"))
+    parser.add_argument("--seconds", type=float, default=float("inf"), help="cooperative pipeline budget")
+    args = parser.parse_args()
+    with args.instance.open() as stream:
+        print(json.dumps(solve(stream, args.seconds), allow_nan=False))

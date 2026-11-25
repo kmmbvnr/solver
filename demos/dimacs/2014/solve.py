@@ -1,8 +1,13 @@
 """Build a terminal-spanning subtree of a shortest-path tree (SteinLib STP)."""
+import argparse
+import json
+from pathlib import Path
 from heapq import heappop, heappush
 
+from shiftopt import run_pipeline
 
-def problem(stream):
+
+def solve(stream, seconds=float("inf")):
     edges, terminals = [], []
     for line in stream:
         fields = line.split()
@@ -56,4 +61,19 @@ def problem(stream):
     def last_root(plan, deadline):
         return connect(terminals[-1])
 
-    return [first_root, last_root], lambda plan: plan["cost"]
+    def score(plan):
+        return plan["cost"]
+
+    plan = run_pipeline([first_root, last_root], score, seconds=seconds)
+    if plan is None:
+        raise ValueError("no feasible solution returned within the search budget")
+    return {"pipeline_score": score(plan), "solution": plan}
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("instance", type=Path, nargs="?", default=Path(__file__).with_name("example.txt"))
+    parser.add_argument("--seconds", type=float, default=float("inf"), help="cooperative pipeline budget")
+    args = parser.parse_args()
+    with args.instance.open() as stream:
+        print(json.dumps(solve(stream, args.seconds), allow_nan=False))

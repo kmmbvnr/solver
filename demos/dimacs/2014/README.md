@@ -4,4 +4,4 @@ Read an undirected SteinLib `.stp` graph with nonnegative edge weights and termi
 
 The example connects three terminals at cost 3. On SteinLib B01 the returned tree cost 82. Its edges, connectivity and cost were independently checked. [Source](https://steinlib.zib.de/download.php).
 
-From the repository root, run `python demos/dimacs/run.py 2014` for the included example or append the path to an input file.
+From the repository root, run `python demos/dimacs/2014/solve.py` for the included example or append the path to an input file.

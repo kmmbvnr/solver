@@ -1,11 +1,16 @@
 """Euclidean TSPLIB tour construction and bounded 2-opt refinement."""
+import argparse
+import json
+from pathlib import Path
 from math import hypot
 from time import monotonic
 
 from scipy.spatial import cKDTree
 
+from shiftopt import run_pipeline
 
-def problem(stream):
+
+def solve(stream, seconds=float("inf")):
     header = {}
     for line in stream:
         if line.strip() == "NODE_COORD_SECTION":
@@ -76,4 +81,16 @@ def problem(stream):
                 break
         return tour
 
-    return [sweep, nearest_neighbor, refine], length
+    plan = run_pipeline([sweep, nearest_neighbor, refine], length, seconds=seconds)
+    if plan is None:
+        raise ValueError("no feasible solution returned within the search budget")
+    return {"pipeline_score": length(plan), "solution": plan}
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("instance", type=Path, nargs="?", default=Path(__file__).with_name("example.txt"))
+    parser.add_argument("--seconds", type=float, default=float("inf"), help="cooperative pipeline budget")
+    args = parser.parse_args()
+    with args.instance.open() as stream:
+        print(json.dumps(solve(stream, args.seconds), allow_nan=False))

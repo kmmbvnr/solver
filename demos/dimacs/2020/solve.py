@@ -1,11 +1,16 @@
 """Optimize replenishment and vehicle assignments, then route each vehicle."""
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
 from math import hypot
 from time import monotonic
 
-from shiftopt import Model, quicksum
+from shiftopt import Model, quicksum, run_pipeline
 
 
-def problem(stream):
+def solve(stream, seconds=float("inf")):
     nodes, periods, capacity, fleet = map(int, stream.readline().split())
     depot, *customers = [list(map(float, row.split())) for row in stream if row.strip()]
     if len(customers) + 1 != nodes or [row[0] for row in [depot, *customers]] != list(range(nodes)):
@@ -113,4 +118,18 @@ def problem(stream):
             routes.append(trips)
         return {"routes": routes, "holding": plan["holding"]}
 
-    return [just_in_time, replenish, route_vehicles], cost
+    plan = run_pipeline([just_in_time, replenish, route_vehicles], cost, seconds=seconds)
+    if plan is None:
+        raise ValueError("no feasible solution returned within the search budget")
+    return {"pipeline_score": cost(plan), "solution": plan}
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("instance", type=Path, nargs="?", default=Path(__file__).with_name("example.txt"))
+    parser.add_argument("--seconds", type=float, default=float("inf"), help="cooperative pipeline budget")
+    args = parser.parse_args()
+    # HiGHS may print a banner before its logger is configured.
+    with os.fdopen(os.dup(sys.stdout.fileno()), "w") as output, args.instance.open() as stream:
+        os.dup2(sys.stderr.fileno(), sys.stdout.fileno())
+        print(json.dumps(solve(stream, args.seconds), allow_nan=False), file=output)

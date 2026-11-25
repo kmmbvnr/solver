@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1] / "demos" / "dimacs"
 
 class DimacsExamples(unittest.TestCase):
     def solve(self, year):
-        raw = subprocess.check_output([sys.executable, ROOT / "run.py", str(year)])
+        raw = subprocess.check_output([sys.executable, ROOT / str(year) / "solve.py"])
         result = json.loads(raw)
         return result["solution"], result["pipeline_score"]
 

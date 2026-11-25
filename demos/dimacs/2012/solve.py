@@ -1,9 +1,14 @@
 """Balanced bisection of unweighted undirected METIS graphs."""
+import argparse
+import json
+from pathlib import Path
 from collections import deque
 from time import monotonic
 
+from shiftopt import run_pipeline
 
-def problem(stream):
+
+def solve(stream, seconds=float("inf")):
     lines = (line.strip() for line in stream if not line.lstrip().startswith("%"))
     n, m, *fmt = map(int, next(lines).split())
     if fmt and fmt != [0]:
@@ -55,4 +60,16 @@ def problem(stream):
                 break
         return side
 
-    return [breadth_first, swap], cut
+    plan = run_pipeline([breadth_first, swap], cut, seconds=seconds)
+    if plan is None:
+        raise ValueError("no feasible solution returned within the search budget")
+    return {"pipeline_score": cut(plan), "solution": plan}
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("instance", type=Path, nargs="?", default=Path(__file__).with_name("example.txt"))
+    parser.add_argument("--seconds", type=float, default=float("inf"), help="cooperative pipeline budget")
+    args = parser.parse_args()
+    with args.instance.open() as stream:
+        print(json.dumps(solve(stream, args.seconds), allow_nan=False))

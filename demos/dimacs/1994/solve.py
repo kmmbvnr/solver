@@ -1,7 +1,12 @@
 """Sort a signed permutation by reversing intervals and flipping their signs."""
+import argparse
+import json
+from pathlib import Path
+
+from shiftopt import run_pipeline
 
 
-def problem(stream):
+def solve(stream, seconds=float("inf")):
     original = list(map(int, stream.read().split()))
     if sorted(map(abs, original)) != list(range(1, len(original) + 1)):
         raise ValueError("expected a signed permutation of 1..n")
@@ -32,4 +37,16 @@ def problem(stream):
     def from_right(plan, deadline):
         return place_in_order(True)
 
-    return [from_left, from_right], len
+    plan = run_pipeline([from_left, from_right], len, seconds=seconds)
+    if plan is None:
+        raise ValueError("no feasible solution returned within the search budget")
+    return {"pipeline_score": len(plan), "solution": plan}
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("instance", type=Path, nargs="?", default=Path(__file__).with_name("example.txt"))
+    parser.add_argument("--seconds", type=float, default=float("inf"), help="cooperative pipeline budget")
+    args = parser.parse_args()
+    with args.instance.open() as stream:
+        print(json.dumps(solve(stream, args.seconds), allow_nan=False))

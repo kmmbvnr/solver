@@ -6,8 +6,8 @@ From the repository root:
 
 ```sh
 python -m pip install .
-python demos/dimacs/run.py 1992
-python demos/dimacs/run.py 2001 pr1002.tsp --seconds 30
+python demos/dimacs/1992/solve.py
+python demos/dimacs/2001/solve.py pr1002.tsp --seconds 30
 ```
 
 The optional time budget starts after input parsing. It is cooperative: a running step can finish past the deadline.

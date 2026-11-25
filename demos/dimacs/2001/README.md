@@ -4,4 +4,4 @@ Read TSPLIB `EUC_2D` coordinates. Compare a coordinate sweep and a nearest-neigh
 
 The example tour has length 14. On `pr1002` the verified tour length was 294,209. The published optimum is 259,045, a gap of 13.6%. [Source](https://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/tsp/TSP-BEST.html).
 
-From the repository root, run `python demos/dimacs/run.py 2001` for the included example or append the path to an input file.
+From the repository root, run `python demos/dimacs/2001/solve.py` for the included example or append the path to an input file.

@@ -4,4 +4,4 @@ Read unweighted undirected METIS adjacency lists. Breadth-first traversal initia
 
 The example has two parts of size three and one crossing edge. The bisection of a 5,000-vertex path also cut one edge. [Source](https://dimacs.rutgers.edu/programs/implementation-challenges/).
 
-From the repository root, run `python demos/dimacs/run.py 2012` for the included example or append the path to an input file.
+From the repository root, run `python demos/dimacs/2012/solve.py` for the included example or append the path to an input file.
