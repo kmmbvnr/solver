@@ -3,15 +3,17 @@
 import argparse
 import csv
 from bisect import bisect_right
-from collections import defaultdict
+from collections import Counter, defaultdict
+from datetime import date
 from contextlib import ExitStack
-from functools import partial
+from functools import lru_cache, partial
 from itertools import chain, islice, repeat
 from math import isfinite
 from pathlib import Path
 
 from time import monotonic
 
+from shiftopt.reassign import reassignment_search
 from shiftopt import beam_search, neighborhood_search, run_pipeline
 
 
@@ -196,7 +198,9 @@ def pack_order(order, truck, ident, limits):
     return loads
 
 
-def solve(folder, output, combine=True, beam_width=0, group_limit=None, largest_first=False, attempts=0, temperature=0.0):
+def solve(folder, output, combine=True, beam_width=0, group_limit=None, largest_first=False, attempts=0, temperature=0.0, reassign=0):
+    if reassign < 0 or (reassign and not combine):
+        raise ValueError("reassignment requires consolidation and a nonnegative budget")
     if not isfinite(temperature) or temperature < 0:
         raise ValueError("temperature must be finite and nonnegative")
     if temperature and not attempts:
@@ -209,11 +213,16 @@ def solve(folder, output, combine=True, beam_width=0, group_limit=None, largest_
         raise ValueError("largest-first requires a group limit")
     trips, bottom_limit = {}, {}
     eligible = defaultdict(set)
+    arrivals = {}
+    prices = {}
     numeric = "Length Width Height EMmm EMmr CM CJfm CJfc CJfh EM EJhr EJcr EJeh".split()
     for r in records(folder, "trucks"):
         ident = r["Id truck"].strip()
         if ident not in trips:
             trips[ident] = {k: number(r[k]) for k in numeric + ["Max weight", "Max density"]}
+        if reassign:
+            arrivals[ident] = r["Arrival time"]
+            prices[ident] = number(r["Cost"])
         key = route_key(r)
         bottom_limit[ident, key[-1]] = number(r["Max weight on the bottom item in stacks"])
         eligible[key].add((r["Arrival time"], ident))
@@ -221,6 +230,8 @@ def solve(folder, output, combine=True, beam_width=0, group_limit=None, largest_
     def assign_and_pack(plan, deadline):
         batches = defaultdict(list)
         for r in records(folder, "items"):
+            if reassign:
+                r["_holding"] = number(r["Inventory cost"]) * int(r["Number of items"])
             key = route_key(r)
             schedule = eligible[key]
             i = bisect_right(schedule, (r["Latest arrival time"], chr(0x10FFFF))) - 1
@@ -282,7 +293,66 @@ def solve(folder, output, combine=True, beam_width=0, group_limit=None, largest_
             steps.append(search_groups)
         if beam_width:
             steps.append(reorder_stacks)
-    shipment = run_pipeline(steps, truck_count)
+    score = truck_count
+    if reassign:
+        weights = next(records(folder, "parameters"))
+        transport = number(weights["Coefficient transportation cost"])
+        inventory = number(weights["Coefficient inventory cost"])
+        extra = number(weights["Coefficient cost extra truck"])
+
+        @lru_cache(None)
+        def day(stamp):
+            return date(int(stamp[:4]), int(stamp[4:6]), int(stamp[6:8])).toordinal()
+
+        def cost(plan):
+            counts = Counter()
+            storage = 0.
+            for (ident, *_), (rows, loads) in plan.items():
+                counts[ident] += len(loads)
+                delivered = day(arrivals[ident])
+                for r in rows:
+                    storage += (day(r["Latest arrival time"]) - delivered) * r["_holding"]
+            freight = sum(prices[i] * (n + max(0, n - 1) * extra) for i, n in counts.items())
+            return transport * freight + inventory * storage
+
+        def transfers(plan):
+            for source, (rows, loads) in sorted(plan.items(), key=lambda item: len(item[1][1])):
+                targets = set()
+                for r in rows:
+                    for stamp, ident in eligible[route_key(r)]:
+                        if ident != source[0] and r["Earliest arrival time"] <= stamp <= r["Latest arrival time"]:
+                            targets.add(ident)
+                for ident in sorted(targets, key=lambda i: (arrivals[i], i), reverse=True):
+                    yield source, (ident, *source[1:])
+
+        def rebuild(plan, transfer, deadline):
+            source, target = transfer
+            if source not in plan:
+                return None
+            keep, move = [], []
+            stamp = arrivals[target[0]]
+            for r in plan[source][0]:
+                can_move = (r["Earliest arrival time"] <= stamp <= r["Latest arrival time"]
+                            and (stamp, target[0]) in eligible[route_key(r)])
+                (move if can_move else keep).append(r)
+            if not move:
+                return None
+            updated = plan.copy()
+            del updated[source]
+            for group, rows in ((source, keep), (target, plan.get(target, ([], []))[0] + move)):
+                if rows:
+                    if monotonic() >= deadline:
+                        return None
+                    try:
+                        loads = pack_group(rows, trips[group[0]], group[0], bottom_limit, True)
+                    except ValueError:
+                        return None
+                    updated[group] = rows, loads
+            return updated
+
+        score = cost
+        steps.append(reassignment_search(transfers, rebuild, cost, attempts=reassign))
+    shipment = run_pipeline(steps, score)
 
     output.mkdir(parents=True, exist_ok=True)
     headers = {
@@ -347,5 +417,6 @@ if __name__ == "__main__":
     parser.add_argument("--largest-first", action="store_true", help="prioritize groups using the most trucks")
     parser.add_argument("--lns-attempts", type=int, default=0, help="destroy-and-repair trials per group")
     parser.add_argument("--temperature", type=float, default=0.0, help="initial neighborhood search temperature")
+    parser.add_argument("--reassign", type=int, default=0, help="number of transfers to try between departures")
     args = parser.parse_args()
-    solve(args.instance, args.output, not args.rows_only, args.beam_width, args.group_limit, args.largest_first, args.lns_attempts, args.temperature)
+    solve(args.instance, args.output, not args.rows_only, args.beam_width, args.group_limit, args.largest_first, args.lns_attempts, args.temperature, args.reassign)

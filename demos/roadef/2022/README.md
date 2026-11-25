@@ -33,3 +33,5 @@ On ten C1 instances (AS, BY, CA, CI, CL and their corresponding *2 instances), t
 Pass `--lns-attempts 16` to remove at least two stack groups from the packing order, reinsert them at random positions and repack. The search minimizes truck count, breaking ties by loaded length. Add `--temperature 0.07` for Metropolis acceptance. Both modes return the best packing seen and use seed 7.
 
 On the same ten C1 instances above, strict LNS beat width-2 beam search on all ten. Median solver time was 1.88 s for LNS and 1.71 s for beam. At 16 trials per group, annealing beat strict LNS six times, tied once and lost three times. Total checker cost fell from 75,573,300 to 75,414,900. The checker accepted every plan.
+
+Add `--reassign 64` to try up to 64 transfers between eligible departures after packing. The step repacks both affected groups and accepts a transfer only if total transportation and early-delivery cost falls. With `--lns-attempts 16 --temperature 0.07`, transfers reduced cost on all ten C1 instances above, from 75,414,900 to 75,328,069 in total. The checker accepted all 20 paired outputs. These improvements added zero tournament points on this subset.
