@@ -186,3 +186,7 @@ Ranks show where ShiftOpt would place in the published standings.
 | [2020](demos/roadef/2020/) | Maintenance scheduling | 13th of 14 |
 | [2022](demos/roadef/2022/) | Truck loading | 14th of 16 |
 | [2026](demos/roadef/2026/) | Traffic routing | Sprint: joint 28th of 54. Qualification: joint 31st of 74. |
+
+## DIMACS benchmarks
+
+Run one problem from each of the 13 DIMACS Implementation Challenges through the shared pipeline. [Editions, inputs and results](demos/dimacs/).
