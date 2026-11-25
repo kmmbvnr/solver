@@ -26,21 +26,22 @@ class Route:
 
 
 def load_plans(paths):
-    plans=[]
-    for path in paths:
-        plan={}
-        for row in ET.parse(path).getroot().find('Shifts'):
-            ops=list(row.find('operations'))
-            route=Route(int(row.findtext('driver')),int(row.findtext('trailer')),int(row.findtext('start')),
-                        tuple((int(e.findtext('point')),int(e.findtext('arrival'))) for e in ops))
-            if route in plan:
-                raise ValueError('duplicate route in schedule')
-            plan[route]=tuple(float(e.findtext('Quantity')) for e in ops)
-        plans.append(plan)
-    return plans
+    return [read_routes(ET.parse(path).getroot()) for path in paths]
 
 
-def export(path,plan):
+def read_routes(root):
+    plan={}
+    for row in root.find('Shifts'):
+        ops=list(row.find('operations'))
+        route=Route(int(row.findtext('driver')),int(row.findtext('trailer')),int(row.findtext('start')),
+                    tuple((int(e.findtext('point')),int(e.findtext('arrival'))) for e in ops))
+        if route in plan:
+            raise ValueError('duplicate route in schedule')
+        plan[route]=tuple(float(e.findtext('Quantity')) for e in ops)
+    return plan
+
+
+def plan_tree(plan):
     root=ET.Element('IRP_Roadef_Challenge_Output')
     parent=ET.SubElement(root,'Shifts')
     for i,(r,quantities) in enumerate(sorted(plan.items(),key=lambda entry:(entry[0].start,entry[0].driver))):
@@ -52,6 +53,11 @@ def export(path,plan):
             node=ET.SubElement(ops,'IRP_Roadef_Challenge_Operation_')
             for key,val in [('point',point),('arrival',at),('Quantity',f'{q:.8f}')]:
                 ET.SubElement(node,key).text=str(val)
+    return root
+
+
+def export(path,plan):
+    root=plan_tree(plan)
     ET.indent(root)
     with atomic_output(path,'wb') as handle:
         ET.ElementTree(root).write(handle,encoding='utf-8',xml_declaration=True)
@@ -252,6 +258,24 @@ def exchange_stops(routes,limit,drivers,trailers,sites,setup,travel,km,horizon):
     return list(proposals)
 
 
+def route_cost_end(r, drivers, trailers, setup, travel, km):
+    driver = drivers[r.driver]
+    rest = int(driver.findtext("LayoverDuration"))
+    rate = float(driver.findtext("TimeCost"))
+    previous, ready = 0, r.start
+    distance = rests = 0
+    for point, arrival in r.ops:
+        if rest and arrival - ready - travel[previous, point] >= rest:
+            rests += 1
+        distance += km[previous, point]
+        previous, ready = point, arrival + setup[point]
+    end = int(ready + travel[previous, 0])
+    distance += km[previous, 0]
+    cost = (distance * float(trailers[r.trailer].findtext("DistanceCost"))
+            + (end - r.start) * rate + rests * (float(driver.findtext("LayoverCost")) - rest * rate))
+    return cost, end
+
+
 def optimize(instance,paths,out,budget,offsets=(),cliques=False,journal=None,window=None,extra_stops=0,replace_last=False,pair_exchanges=0):
     start=time.monotonic()
     root=ET.parse(instance).getroot()
@@ -296,21 +320,9 @@ def optimize(instance,paths,out,budget,offsets=(),cliques=False,journal=None,win
     for r in routes:
         y=selected[r]=model.addVar(vtype='B')
         cap=float(trailers[r.trailer].findtext('Capacity'))
-        dur=int(drivers[r.driver].findtext('LayoverDuration'))
-        driver_cost=float(drivers[r.driver].findtext('TimeCost'))
-        fixed_rest=float(drivers[r.driver].findtext('LayoverCost'))
-        distance=0.
-        rests=0
-        prev=0
-        at=r.start
+        costs[r], end[r] = route_cost_end(r, drivers, trailers, setup, travel, km)
         amounts=[]
-        for j,(p,t) in enumerate(r.ops):
-            leg=travel[prev,p]
-            if t-at-leg>=dur and dur>0:
-                rests+=1
-            distance+=km[prev,p]
-            at=t+setup[p]
-            prev=p
+        for p,t in r.ops:
             if p in sources:
                 q=model.addVar(lb=-cap,ub=0)
                 model.addConstr(q>=-cap*y)
@@ -324,8 +336,6 @@ def optimize(instance,paths,out,budget,offsets=(),cliques=False,journal=None,win
             by_trailer[r.trailer].append((t,len(by_trailer[r.trailer]),q))
             amounts.append(q)
         quantities[r]=amounts
-        end[r]=int(at+travel[prev,0])
-        costs[r]=(distance+km[prev,0])*float(trailers[r.trailer].findtext('DistanceCost'))+(end[r]-r.start)*driver_cost+rests*(fixed_rest-dur*driver_cost)
     for route in frozen:
         model.addConstr(selected[route]==1)
     if cliques:

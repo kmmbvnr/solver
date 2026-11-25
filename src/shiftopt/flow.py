@@ -4,7 +4,7 @@ from math import inf, isfinite
 
 
 def bounded_max_flow(node_count, edges, source, sink):
-    """Return flows in input order, or None if the lower bounds are infeasible."""
+    """Return edge flows in input order, or None if no nonnegative s-t flow exists."""
     if not (0 <= source < node_count and 0 <= sink < node_count and source != sink):
         raise ValueError("expected distinct source and sink nodes")
     origin, target = node_count, node_count + 1

@@ -2,7 +2,6 @@
 
 import argparse
 import json
-import shutil
 import sys
 import tempfile
 import time
@@ -18,7 +17,9 @@ from roadef_calendar_search import search
 from roadef_feasible import solve as assign_with_cp_sat
 from instance_xml import table
 from roadef_quantities import optimize as optimize_volumes
-from roadef_route_pool import optimize as optimize_routes
+from shiftopt import run_pipeline
+from route_search import RouteSearch
+from roadef_route_pool import export, load_plans, optimize as optimize_routes
 from instance_xml import atomic_output
 
 
@@ -132,15 +133,14 @@ def retime(instance, incumbent, output, seconds):
     }
 
 
-def solve(instance, output):
+def solve(instance, output, *, route_mip=False):
     """Solve an official input from scratch, publishing a plan after each stage."""
     instance, output = Path(instance), Path(output)
     if instance.resolve() == output.resolve():
         raise ValueError("Input and output paths must differ")
 
-    def publish(candidate):
-        with candidate.open("rb") as src, atomic_output(output, "wb") as dst:
-            shutil.copyfileobj(src, dst)
+    problem = ET.parse(instance).getroot()
+    routes = RouteSearch(problem)
 
     with tempfile.TemporaryDirectory() as tmp:
         candidate = Path(tmp) / "candidate.xml"
@@ -160,30 +160,48 @@ def solve(instance, output):
                 raise RuntimeError(
                     "Neither constructor found a complete schedule within its budget"
                 )
-        publish(candidate)
-        optimize_volumes(instance, output, candidate)
-        publish(candidate)
-        root = ET.parse(instance).getroot()
-        horizon = int(root.findtext("horizon")) * int(root.findtext("unit"))
-        if horizon >= 1440:
-            optimize_routes(
-                instance,
-                [output],
-                candidate,
-                48,
-                offsets=(-60, 60),
-                cliques=True,
-                window=(0, min(4, horizon // 1440)),
-                extra_stops=4,
-                replace_last=True,
-            )
-            publish(candidate)
-        return retime(instance, output, output, 10)
+        initial = load_plans([candidate])[0]
+        export(output, initial)
+
+        def volumes(plan, deadline):
+            export(candidate, plan)
+            optimize_volumes(instance, candidate, candidate)
+            return load_plans([candidate])[0]
+
+        def route_step(plan, deadline):
+            if routes.horizon < 1440:
+                return None
+            limit = min(deadline, time.monotonic() + 48)
+            if not route_mip:
+                improved = routes.improve(plan, limit)
+                export(candidate, improved)
+                return improved
+            export(candidate, plan)
+            optimize_routes(instance, [candidate], candidate, 48, offsets=(-60, 60),
+                            cliques=True, window=(0, min(4, routes.horizon // 1440)),
+                            extra_stops=4, replace_last=True)
+            return load_plans([candidate])[0]
+
+        timing = {}
+        def timing_step(plan, deadline):
+            export(candidate, plan)
+            timing.update(retime(instance, candidate, candidate, 10))
+            return load_plans([candidate])[0]
+
+        def publish(step, previous, proposed, elapsed):
+            if proposed is not None and proposed < previous:
+                with candidate.open("rb") as src, atomic_output(output, "wb") as dst:
+                    dst.write(src.read())
+
+        best = run_pipeline([volumes, route_step, timing_step], routes.score, initial=initial, on_step=publish)
+        export(output, best)
+        return timing
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("instance", type=Path)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--route-mip", action="store_true", help="use the benchmark mixed-integer route pool")
     args = parser.parse_args()
-    print(json.dumps(solve(args.instance, args.output)), flush=True)
+    print(json.dumps(solve(args.instance, args.output, route_mip=args.route_mip)), flush=True)

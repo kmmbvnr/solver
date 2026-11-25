@@ -1,6 +1,6 @@
 # ROADEF/EURO 2016 · Inventory Routing
 
-A calendar search builds a delivery plan. Linear programming refines delivery quantities, a route pool improves the first four days, and CP-SAT adjusts shift and stop times.
+A calendar search builds the initial plan. ShiftOpt runs three improvement steps and retains the lowest cost per unit delivered. Bounded maximum flow allocates deliveries across trailer stops and customer inventories. A local search shifts routes and changes their last stops in the first four days, recomputing feasible quantities for each proposal. OR-Tools CP-SAT adjusts shift and stop times. The default path makes no HiGHS solve calls. Pass `--route-mip` to use the mixed-integer route pool instead of local search.
 
 After installing `.[roadef]`, run the commands from this directory. The archives in `data/` contain all 20 instances from the B+X final. [Official instances and checker](https://roadef.org/challenge/2016/en/instances.php).
 
