@@ -1,0 +1,10 @@
+VERTICES : 4
+VEHICULOS : 2
+CAPACIDAD : 5
+LISTA_ARISTAS_REQ :
+(1, 2) coste 2 demanda 3
+(2, 3) coste 1 demanda 2
+(3, 4) coste 2 demanda 3
+LISTA_ARISTAS_NOREQ :
+(4, 1) coste 2
+DEPOSITO : 1

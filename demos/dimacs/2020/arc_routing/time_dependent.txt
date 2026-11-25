@@ -1,0 +1,10 @@
+NAME : two-periods
+VEHICLES : 1
+CAPACITY : 5
+DEPOT : 1
+STARTTIME : 0
+ENDTIME : 20
+SERVICE_SPEED_FACTOR : 0.5
+[NETWORK_DATA]
+1 2 4 3 2 [ 2 ] [ 1 2 ]
+2 1 4 3 2 [ 2 ] [ 1 2 ]
