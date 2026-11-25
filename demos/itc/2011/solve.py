@@ -128,7 +128,9 @@ def main():
         plan = run_pipeline(steps, itemgetter(0), seconds=args.seconds)
     if plan is None:
         parser.exit(1, "No schedule with zero hard cost found within the budget.\n")
-    args.output.write_bytes(plan[1])
+    # KHE can change resource group references when it serializes the instance.
+    root.getroot().append(ET.fromstring(plan[1]).find("SolutionGroups"))
+    root.write(args.output, encoding="utf-8", xml_declaration=True)
     print(plan[0])
 
 
