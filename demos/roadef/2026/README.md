@@ -41,3 +41,17 @@ python rank.py "$case_id" "$work/check.json" qualification_results/readme.md \
 ```
 
 A pilot tried 12 waypoint proposals from each saved plan on A01–A05 and X07, keeping one or two plans per layer for three layers. Both widths improved the checker's lexicographic load vector on all six instances. Width 1 beat width 2 on A02, A03 and A05 and tied on the others. Both lowered the peak on X07 from 0.437521 to 0.368036, moving from 55th to 53rd on that instance. None of these six runs reached the top 15 needed for points.
+
+## Choosing waypoint moves
+
+Pass `--policy adaptive --rounds 12` to start with a shared waypoint move, repeat the last operator after an improvement, and switch between shared and single-period moves after a miss. Use `--policy alternate` for fixed alternation.
+
+All four modes started from default routing and made 12 proposals per instance. The sprint checker v1.2.2 accepted all 80 plans. Counts compare the adaptive plan's full load vector with each baseline. The last ten instances were held out of the pilot.
+
+| Baseline | Better / tied / worse on A01–A20 | Better / tied / worse on A11–A20 |
+|---|---:|---:|
+| Shared moves only (default) | 11 / 3 / 6 | 3 / 3 / 4 |
+| Single-period moves only | 19 / 0 / 1 | 10 / 0 / 0 |
+| Fixed alternation | 15 / 1 / 4 | 7 / 0 / 3 |
+
+The adaptive run earned 0 sprint points. Its closest result was A11, between 18th and 21st. These runs used equal proposal counts and had no wall-clock limit.

@@ -4,7 +4,7 @@ import json
 import subprocess
 import tempfile
 from collections import Counter
-from functools import lru_cache, partial
+from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
@@ -99,7 +99,7 @@ def propose(graph, jobs, scenario, loads, via, period, rng, change_limit=None, o
     return trial
 
 
-def solve(folder, name, checker, output, rounds, period_only=False):
+def solve(folder, name, checker, output, rounds, period_only=False, policy="fixed"):
     paths = [folder / f"{name}-{k}.json" for k in ("net", "tm", "scenario")]
     graph, traffic, scenario = (json.loads(p.read_text()) for p in paths)
     jobs = traffic["demands"]
@@ -126,20 +126,20 @@ def solve(folder, name, checker, output, rounds, period_only=False):
                 raise ValueError("Default routing is infeasible")
             return via, rows, candidate.read_bytes()
 
-        def waypoint_move(plan, deadline, *, step):
+        def waypoint_move(plan, deadline, step, single_period):
             via, current, _ = plan
             ranked = sorted(current, key=lambda row: -row["sat"])
             periods = list(dict.fromkeys(row["t"] for row in ranked))
             loads = {(r["t"], r["from"], r["to"]): r["sat"] for r in current}
-            period = periods[step % (len(periods) if period_only else min(3, len(periods)))]
+            period = periods[step % (len(periods) if single_period else min(3, len(periods)))]
             limit = None
-            if period_only:
+            if single_period:
                 budgets = [x["value"] for x in scenario["budget"] if x["t"] in (period, period + 1)]
                 limit = max(1, min(budgets, default=4) // 4)
             moves = propose(graph, jobs, scenario, loads, via[period], period, rng, limit,
-                            8 * (step % 4) if period_only else 0)
+                            8 * (step % 4) if single_period else 0)
             trial = via.copy()
-            if period_only:
+            if single_period:
                 trial[period] = moves
             else:
                 trial[:] = moves
@@ -153,8 +153,39 @@ def solve(folder, name, checker, output, rounds, period_only=False):
         def load_vector(plan):
             return tuple(sorted((row["sat"] for row in plan[1]), reverse=True))
 
-        steps = [default_routes, *(partial(waypoint_move, step=i) for i in range(rounds))]
-        run_pipeline(steps, load_vector, on_accept=lambda plan: output.write_bytes(plan[2]))
+        if policy not in ("fixed", "alternate", "adaptive") or (period_only and policy != "fixed"):
+            raise ValueError("mixed policies require both shared and period moves")
+
+        def operator(single_period):
+            attempts = 0
+            def move(plan, deadline):
+                nonlocal attempts
+                index = attempts
+                attempts += 1
+                return waypoint_move(plan, deadline, index, single_period)
+            return move
+
+        shared, period = operator(False), operator(True)
+        moves = max(0, rounds)
+        choose = None
+        if policy == "adaptive":
+            steps = [default_routes, shared, period]
+
+            def choose(best, history, remaining):
+                if best is None:
+                    return default_routes
+                last = history[-1]
+                if last.step is default_routes:
+                    return shared
+                if last.accepted:
+                    return last.step
+                return period if last.step is shared else shared
+        elif policy == "alternate":
+            steps = [default_routes, *((shared, period)[i % 2] for i in range(moves))]
+        else:
+            steps = [default_routes] + [period if period_only else shared] * moves
+        run_pipeline(steps, load_vector, policy=choose, max_steps=moves + 1,
+                     on_accept=lambda plan: output.write_bytes(plan[2]))
 
 
 if __name__ == "__main__":
@@ -165,5 +196,8 @@ if __name__ == "__main__":
     parser.add_argument("output", type=Path)
     parser.add_argument("--rounds", type=int, default=6)
     parser.add_argument("--period-only", action="store_true", help="optimize one period per iteration")
+    parser.add_argument("--policy", choices=("fixed", "alternate", "adaptive"), default="fixed")
     args = parser.parse_args()
-    solve(args.folder, args.instance, args.checker.resolve(), args.output, args.rounds, args.period_only)
+    if args.period_only and args.policy != "fixed":
+        parser.error("--period-only applies to the fixed policy")
+    solve(args.folder, args.instance, args.checker.resolve(), args.output, args.rounds, args.period_only, args.policy)
