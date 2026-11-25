@@ -30,6 +30,50 @@ def exam_cost(days, periods, rooms, durations, pairs, weights, large, positions)
     )
 
 
+def mixed_penalty(occupants, durations):
+    kinds = set()
+    while occupants:
+        bit = occupants & -occupants
+        kinds.add(durations[bit.bit_length() - 1])
+        occupants ^= bit
+    return max(0, len(kinds) - 1)
+
+
+def exam_delta(days, periods, rooms, durations, neighbors, weights, large, old, state, previous):
+    new = state.positions
+    changed_times = {i for i, t, _ in previous if new[i][0] != t}
+    two_row, two_day = weights["TWOINAROW"][0], weights["TWOINADAY"][0]
+    spread = weights["PERIODSPREAD"][0]
+    _, last, front = weights["FRONTLOAD"]
+    boundary = len(periods) - last
+    change = 0
+    toggles = {}
+    for i, t, r in previous:
+        nt, nr = new[i]
+        change += rooms[nr] - rooms[r] + periods[nt] - periods[t]
+        if i in large:
+            change += front * (int(nt >= boundary) - int(t >= boundary))
+        for place in ((t, r), (nt, nr)):
+            toggles[place] = toggles.get(place, 0) ^ (1 << i)
+    for (t, r), toggled in toggles.items():
+        after = state.rooms[t][r]
+        change += weights["NONMIXEDDURATIONS"][0] * (
+            mixed_penalty(after, durations) - mixed_penalty(after ^ toggled, durations)
+        )
+    for i in changed_times:
+        for j, shared in neighbors[i]:
+            if j < i and j in changed_times:
+                continue
+            for positions, sign in ((old, -1), (new, 1)):
+                a, b = positions[i][0], positions[j][0]
+                gap = abs(a - b)
+                cost = int(gap <= spread)
+                if days[a] == days[b]:
+                    cost += two_row if gap == 1 else two_day
+                change += sign * shared * cost
+    return change
+
+
 def read_exam(path):
     sections = defaultdict(list)
     for line in path.read_text().splitlines():
@@ -81,6 +125,10 @@ def read_exam(path):
         weights,
         large,
     )
+    neighbors = [[] for _ in exams]
+    for (a, b), count in joint.items():
+        neighbors[a].append((b, count))
+        neighbors[b].append((a, count))
     return Timetable(
         [[t for t, p in enumerate(periods) if int(p[2]) >= d] for d in durations],
         [[r for r, (cap, _) in enumerate(rooms) if cap >= n] for n in sizes],
@@ -91,6 +139,16 @@ def read_exam(path):
         len(periods),
         cost,
         exclusive,
+        delta=partial(
+            exam_delta,
+            [p[0] for p in periods],
+            [int(p[3]) for p in periods],
+            [r[1] for r in rooms],
+            durations,
+            neighbors,
+            weights,
+            set(large),
+        ),
     )
 
 

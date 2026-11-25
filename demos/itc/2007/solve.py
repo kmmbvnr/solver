@@ -21,9 +21,18 @@ def main():
     parser.add_argument("output", type=Path)
     parser.add_argument("--seconds", type=int, default=60)
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--search", choices=("anneal", "hill", "greedy", "deluge"), default="anneal")
+    parser.add_argument(
+        "--search", choices=("anneal", "hill", "greedy", "deluge"), default="anneal"
+    )
     parser.add_argument("--attempts", type=int, default=50000)
+    parser.add_argument(
+        "--compactness",
+        action="store_true",
+        help="reserve 10% of attempts for a compactness polishing step",
+    )
     args = parser.parse_args()
+    if args.compactness and args.track != "ctt":
+        parser.error("--compactness requires the ctt track")
     if args.track == "exam":
         problem, write = exams.read_exam(args.input), exams.write_exam
     elif args.track == "tim":
@@ -40,8 +49,18 @@ def main():
     steps = [partial(construct, problem, args.seed, args.seconds * 0.8)]
     if args.track == "ctt":
         steps.append(partial(exchange_labels, problem, 1))
-    steps.append(methods[args.search](TimetableMoves(problem), score,
-                                      attempts=args.attempts, seed=args.seed))
+    polish = args.attempts // 10 if args.compactness else 0
+    steps.append(
+        methods[args.search](
+            TimetableMoves(problem), score, attempts=args.attempts - polish, seed=args.seed
+        )
+    )
+    if polish:
+        steps.append(
+            hill_climbing(
+                TimetableMoves(problem, ("compact",)), score, attempts=polish, seed=args.seed
+            )
+        )
     plan = run_pipeline(steps, score, seconds=args.seconds)
     if plan is None:
         parser.exit(1, "No complete timetable found within the budget.\n")

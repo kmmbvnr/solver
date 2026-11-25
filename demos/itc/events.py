@@ -4,7 +4,7 @@ from functools import partial
 
 import numpy as np
 
-from demos.itc.timetable import Timetable, add_clique
+from demos.itc.timetable import Timetable, add_clique, day_delta
 
 
 def event_cost(students, events, count, positions):
@@ -14,6 +14,20 @@ def event_cost(students, events, count, positions):
     days = busy.reshape(-1, 5, 9)
     triples = days[:, :, :-2] & days[:, :, 1:-1] & days[:, :, 2:]
     return int(days[:, :, -1].sum() + (days.sum(axis=2) == 1).sum() + triples.sum())
+
+
+def student_day_cost(slots):
+    seen = repeated = triples = 0
+    for i, busy in enumerate(slots):
+        repeated |= seen & busy
+        seen |= busy
+        if i >= 2:
+            triples += (busy & slots[i - 1] & slots[i - 2]).bit_count()
+    return (seen ^ repeated).bit_count() + slots[-1].bit_count() + triples
+
+
+def event_delta(positions, state, previous):
+    return day_delta(state, previous, 9, student_day_cost)
 
 
 def read_events(path, post_enrolment):
@@ -52,6 +66,8 @@ def read_events(path, post_enrolment):
         relations,
         45,
         partial(event_cost, *np.nonzero(attendance), students),
+        members=[sum(1 << int(i) for i in np.flatnonzero(row)) for row in attendance.T],
+        delta=event_delta,
     )
 
 

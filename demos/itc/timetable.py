@@ -18,6 +18,9 @@ class Timetable:
     slots: int
     objective: Callable
     exclusive: int = 0
+    members: list | None = None
+    delta: Callable | None = None
+    compact_move: Callable | None = None
 
 
 class TimetableMoves:
@@ -27,7 +30,10 @@ class TimetableMoves:
 
     def __init__(self, problem, operators=operators):
         self.operators = tuple(operators)
-        if not self.operators or not set(self.operators) <= set(TimetableMoves.operators):
+        available = set(TimetableMoves.operators)
+        if problem.compact_move is not None:
+            available.add("compact")
+        if not self.operators or not set(self.operators) <= available:
             raise ValueError("choose at least one known timetable move")
         self.problem = problem
         self.base = self.candidate = self.state = None
@@ -46,7 +52,11 @@ class TimetableMoves:
             time, room = positions[event]
             kind = rng.choice(self.operators)
             target = rng.choice(problem.periods[event])
-            if kind == "chain":
+            if kind == "compact":
+                changes = problem.compact_move(self.state, rng, deadline)
+                if not changes and self.operators == ("compact",):
+                    return None
+            elif kind == "chain":
                 changes = self.state.period_chain(event, target) if target != time else []
             elif kind == "room":
                 changes = [(event, time, rng.choice(problem.rooms[event]))]
@@ -63,12 +73,18 @@ class TimetableMoves:
                     continue
                 changes = [(event, t, r), (other, time, room)]
             else:
-                changes = [(event, target, room if kind == "time" else rng.choice(problem.rooms[event]))]
+                changes = [
+                    (event, target, room if kind == "time" else rng.choice(problem.rooms[event]))
+                ]
             if changes:
                 self.undo = self.state.apply(changes)
                 if self.undo:
                     self.candidate = tuple(self.state.positions)
-                    return problem.objective(self.candidate), self.candidate
+                    if problem.delta is None:
+                        cost = problem.objective(self.candidate)
+                    else:
+                        cost = plan[0] + problem.delta(positions, self.state, self.undo)
+                    return cost, self.candidate
         return None
 
 
@@ -76,6 +92,7 @@ class Occupancy:
     def __init__(self, problem, positions):
         self.problem = problem
         self.positions = [None] * len(problem.periods)
+        self.members = [0] * problem.slots
         self.period = [0] * problem.slots
         self.rooms = [[0] * len(problem.capacity) for _ in self.period]
         self.used = [[0] * len(problem.capacity) for _ in self.period]
@@ -128,6 +145,8 @@ class Occupancy:
 
     def place(self, event, time, room):
         self.positions[event] = (time, room)
+        if self.problem.members is not None:
+            self.members[time] |= self.problem.members[event]
         self.period[time] |= 1 << event
         self.rooms[time][room] |= 1 << event
         self.used[time][room] += self.problem.demand[event][room]
@@ -135,6 +154,8 @@ class Occupancy:
     def remove(self, event):
         time, room = self.positions[event]
         self.positions[event] = None
+        if self.problem.members is not None:
+            self.members[time] ^= self.problem.members[event]
         self.period[time] ^= 1 << event
         self.rooms[time][room] ^= 1 << event
         self.used[time][room] -= self.problem.demand[event][room]
@@ -237,3 +258,21 @@ def exchange_labels(problem, axis, incumbent, deadline):
         if cost < best:
             best, positions = cost, candidate
     return best, positions
+
+
+def day_delta(state, previous, per_day, day_cost):
+    """Score affected days using student or curriculum occupancy bitsets."""
+    toggles = {}
+    for event, old, _ in previous:
+        new = state.positions[event][0]
+        if old != new:
+            mask = state.problem.members[event]
+            for slot in (old, new):
+                toggles[slot] = toggles.get(slot, 0) ^ mask
+    delta = 0
+    for day in {slot // per_day for slot in toggles}:
+        start = day * per_day
+        after = state.members[start : start + per_day]
+        before = [mask ^ toggles.get(start + i, 0) for i, mask in enumerate(after)]
+        delta += day_cost(after) - day_cost(before)
+    return delta
