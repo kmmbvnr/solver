@@ -156,11 +156,26 @@ the entire final timetable of one uninterrupted cycle (penalty 1,337).
 | Repeated long annealing | 51.665 | 6 |
 | Resumable annealing | 51.658 | 6 |
 | Resumable annealing with stagnation switching | 52.273 | 6 |
+| Resumable annealing with penalty-directed event selection | 51.277 | 6 |
 
 Across the 123 paired feasible starts, resumption beat the long control 17
 times, tied 91 and lost 15. The median paired difference was zero. Against
 resumption alone, switching to hill climbing after one idle burst won 26,
 tied 3 and lost 94. Its median paired penalty increased by 47.
+
+Pass `--penalty-events` to the post-enrolment demo to bias event selection.
+Half the draws try a random period and sample an event in proportion to the
+number of students incurring a single-lecture, late-lecture or consecutive-
+lecture penalty there. Empty draws fall back to uniform sampling. The move
+types, temperature and cooling cycle stay the same.
+
+Against uniform resumption, this option won 66 paired trials, tied one and
+lost 56. The median paired change was −5 penalty points. The median change
+favored it on seven instances and favored uniform selection on eight.
+Some control trials ran alongside construction jobs. Among the 73 feasible
+pairs whose controls ran entirely after construction finished, the directed
+step won 38, tied one and lost 34 (median change −2). Its mean competition
+rank improved slightly. The demo keeps directed selection opt-in.
 
 Each reconstructed table compares one Python configuration with the five
 historical finalists. Runs are ordered by distance to feasibility and then
