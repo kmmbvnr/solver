@@ -189,4 +189,4 @@ Ranks show where ShiftOpt would place in the published standings.
 
 ## DIMACS benchmarks
 
-Six DIMACS benchmarks compare candidate plans or refine the incumbent through the shared pipeline. [Editions, inputs and results](demos/dimacs/).
+Thirty standalone DIMACS demos across eleven editions compare candidate plans or refine an incumbent through the shared pipeline. [Editions, inputs and results](demos/dimacs/).
