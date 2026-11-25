@@ -5,6 +5,9 @@ from random import Random
 from time import monotonic
 
 
+_EXPIRED = object()
+
+
 def neighborhood_search(destroy, repair, score, *, attempts, seed=0, temperature=0.0):
     """Destroy part of the current plan and repair it into a complete proposal.
 
@@ -20,7 +23,7 @@ def neighborhood_search(destroy, repair, score, *, attempts, seed=0, temperature
 def _repair_move(destroy, repair, current, rng, deadline):
     partial_plan = destroy(current, rng)
     if monotonic() >= deadline:
-        return None
+        return _EXPIRED
     return repair(partial_plan, rng, deadline)
 
 
@@ -54,6 +57,8 @@ def _search_step(move, score, attempts, seed, temperature):
             if monotonic() >= deadline:
                 break
             proposal = move(current, rng, deadline)
+            if proposal is _EXPIRED:
+                break
             if proposal is None:
                 continue
             value = score(proposal)
