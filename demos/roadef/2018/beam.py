@@ -2,6 +2,7 @@
 
 from typing import NamedTuple
 from shiftopt import beam_search
+from shiftopt.tree import bounded_best_first
 
 
 class State(NamedTuple):
@@ -42,7 +43,7 @@ def clear_row(defects, x, width, old_width, bottom, filled, height, trim):
     return y
 
 
-def beam_plan(problem, deadline, breadth):
+def beam_plan(problem, deadline, breadth=None):
     settings, stacks, defects = problem
     W, H = settings["widthPlates"], settings["heightPlates"]
     trim, max_width = settings["minWaste"], settings["max1Cut"]
@@ -110,6 +111,13 @@ def beam_plan(problem, deadline, breadth):
                         s,
                         (plate, x, y, left, item, w, h),
                     )
+
+    if breadth is None:
+        state = bounded_best_first(initial, expand, key=lambda s: s[:7], priority=lambda s: s.cost,
+                                   complete=lambda s: s.count == total, score=lambda s: s.cost,
+                                   lower_bound=lambda s: (s.plate * W + s.x + s.width) * H,
+                                   limits=(1, 4, 16, 64, 256), deadline=deadline)
+        return None if state is None else cutting_tree(state, W, H)
 
     state = beam_search(
         initial,
