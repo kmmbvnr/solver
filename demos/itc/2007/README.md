@@ -188,6 +188,30 @@ and its penalty.
 python -m demos.itc.2007.solve tim demos/itc/2007/comp-2007-2-5.tim /tmp/events.sln --seconds 60 --seed 1 --policy repeat --resume --attempts 3000 --cycle-attempts 50000
 ```
 
+## Construction with eviction history
+
+The shared `assignment_constructor` chooses placements, evicts blockers and
+requeues them. The timetable adapter supplies eligible period-room pairs and
+conflicts. Pass `--conflict-memory` to penalize each previous eviction of the
+same event by the same placement. The default uses blocker count alone.
+
+On all 24 post-enrolment instances, both constructors had 48 seconds, the same
+ten odd seeds and the same item-order and tie-breaking rules. Paired trials
+ran concurrently in randomized order. Every complete timetable passed the
+competition validator.
+
+| Construction | Verified starts | Instances solved at least once |
+| --- | ---: | ---: |
+| Blocker count | 133/240 | 15/24 |
+| Blocker count plus eviction history | 176/240 | 18/24 |
+
+History added 43 successful starts and retained all 133 paired successes.
+It solved set 14 on 10 seeds, set 23 on six and set 24 on ten. On the common
+successes the median paired time to feasibility fell by 1.13 seconds and the
+median paired change in initial penalty was zero. The previous full-pipeline
+experiment had 123 successful starts under its own machine load. The standings
+above still refer to that earlier experiment.
+
 ## Previous UniTime pipeline on the full competition set
 
 Each instance received ten runs with a local 60-second pipeline budget. The 2007 Mac calibration program is a 32-bit Intel executable, so the time limit on this Apple Silicon machine is a local choice. The ten run seeds were 1, 3, …, 19. Each run used two consecutive UniTime seeds. Every returned schedule passed a separate constraint and cost check.
