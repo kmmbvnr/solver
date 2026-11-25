@@ -1,0 +1,8 @@
+Root 1
+Budget 4
+HopLimit 2
+E 1 2 1
+E 2 3 2
+E 1 4 4
+PV 3 7
+PV 4 5
