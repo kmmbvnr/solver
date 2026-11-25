@@ -232,6 +232,13 @@ Each demo runs its own pipeline and writes a solution in the competition format.
 | [2026](demos/pace/2026/) | Maximum agreement forest |
 | [2027](demos/pace/2027/) | Unweighted k-path, Weighted directed k-path |
 
+## CHeSC benchmarks
+
+| Edition | Pipeline benchmark | Result |
+| --- | --- | --- |
+| [2011](demos/chesc/2011/) | Six HyFlex domains, 30 competition instances | Bandit vs fixed order on one short run: 16 wins, 11 ties, 3 losses |
+| [2014](demos/chesc/2014/) | Single-solver and multiple-solver batch formats on the public 2011 set | Both modes improved all 30 starting solutions in a local reproduction |
+
 ## License
 
 ShiftOpt is licensed under the [GNU Affero General Public License, version 3 only](LICENSE). Third-party benchmark data is subject to its original terms.
