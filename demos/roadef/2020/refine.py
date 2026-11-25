@@ -4,9 +4,10 @@ from collections import defaultdict
 from time import monotonic
 
 import numpy as np
+from shiftopt.restart import restart_strength
 
 
-def refine(data, schedule, deadline):
+def refine(data, schedule, deadline, adaptive=False):
     jobs = data["Interventions"]
     starts = dict(schedule)
     sizes = data["Scenarios_number"]
@@ -57,6 +58,8 @@ def refine(data, schedule, deadline):
     delta = best_delta = 0.0
     shake = False
     strength = max(2, len(jobs) // 12)
+    adjust = restart_strength(2, max(2, len(jobs) // 4)) if adaptive else None
+    previous_restart = float("inf")
     while monotonic() < deadline:
         improved = False
         for name in rng.permutation(list(jobs)):
@@ -121,7 +124,8 @@ def refine(data, schedule, deadline):
             shake = False
         elif not improved:
             shake = True
-            strength = max(2, len(jobs) // 12)
+            strength = adjust(best_delta < previous_restart - 1e-7) if adjust else max(2, len(jobs) // 12)
+            previous_restart = best_delta
     return best
 
 

@@ -70,7 +70,9 @@ def construct(data, seconds):
     }
 
 
-def solve(instance, output, seconds, refine_seconds, repair_first=False, margins=True, paired=False, chain_length=2):
+def solve(instance, output, seconds, refine_seconds, repair_first=False, margins=True, paired=False, chain_length=2, adaptive_restart=False):
+    if adaptive_restart and (paired or chain_length > 2):
+        raise ValueError("adaptive restarts apply to single-date refinement")
     if chain_length < 2:
         raise ValueError("chain length must be at least two")
     data = read(instance)
@@ -94,7 +96,7 @@ def solve(instance, output, seconds, refine_seconds, repair_first=False, margins
         limit = min(deadline, monotonic() + refine_seconds)
         if paired or chain_length > 2:
             return pair_search(data, plan, limit, chain_length)
-        return refine(data, plan, limit)
+        return refine(data, plan, limit, adaptive=adaptive_restart)
 
     steps = []
     if not repair_first and scenario_bytes <= 750_000_000:
@@ -126,6 +128,8 @@ if __name__ == "__main__":
     )
     parser.add_argument("--paired", action="store_true", help="refine by swapping two start dates at once")
     parser.add_argument("--chain-length", type=int, default=2, help="enable longer exchanges above two jobs")
+    parser.add_argument("--adaptive-restart", action="store_true",
+                        help="grow the single-date perturbation after stagnation")
     args = parser.parse_args()
     solve(
         args.instance,
@@ -136,4 +140,5 @@ if __name__ == "__main__":
         not args.plain_repair,
         args.paired,
         args.chain_length,
+        args.adaptive_restart,
     )
