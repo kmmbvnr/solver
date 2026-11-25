@@ -189,4 +189,4 @@ Ranks show where ShiftOpt would place in the published standings.
 
 ## DIMACS benchmarks
 
-Run one problem from each of the 13 DIMACS Implementation Challenges through the shared pipeline. [Editions, inputs and results](demos/dimacs/).
+Six DIMACS benchmarks compare candidate plans or refine the incumbent through the shared pipeline. [Editions, inputs and results](demos/dimacs/).
