@@ -17,7 +17,7 @@ def neighborhood_search(destroy, repair, score, *, attempts, seed=0, temperature
     It cools exponentially with the attempt count. The returned plan is the best seen.
     """
     move = partial(_repair_move, destroy, repair)
-    return _search_step(move, score, attempts, seed, temperature)
+    return _temperature_step(move, score, attempts, seed, temperature)
 
 
 def _repair_move(destroy, repair, current, rng, deadline):
@@ -35,12 +35,53 @@ def simulated_annealing(move, score, *, attempts, temperature, seed=0):
     """
     if temperature <= 0:
         raise ValueError("annealing requires a positive temperature")
-    return _search_step(move, score, attempts, seed, temperature)
+    return _temperature_step(move, score, attempts, seed, temperature)
 
 
-def _search_step(move, score, attempts, seed, temperature):
+def hill_climbing(move, score, *, attempts, seed=0, allow_equal=True):
+    """Sample one feasible neighbor per attempt. Equal scores may cross plateaus."""
+    return _search_step(move, score, attempts, seed, _plateau if allow_equal else _strict)
+
+
+def great_deluge(move, score, *, attempts, margin, target, seed=0):
+    """Accept improving moves or numeric costs below a falling water level.
+
+    The level falls linearly from starting cost + margin to target. A target
+    above the starting cost is clamped to that cost. The best visited plan survives.
+    """
+    if not isfinite(margin) or margin < 0 or not isfinite(target):
+        raise ValueError("margin must be finite and nonnegative and target finite")
+    return _search_step(move, score, attempts, seed, partial(_below_level, margin, target))
+
+
+def _strict(initial, current, value, i, attempts, rng):
+    return False
+
+
+def _plateau(initial, current, value, i, attempts, rng):
+    return value == current
+
+
+def _below_level(margin, target, initial, current, value, i, attempts, rng):
+    start = initial + margin
+    end = min(initial, target)
+    fraction = i / max(1, attempts - 1)
+    return value <= start + (end - start) * fraction
+
+
+def _metropolis(temperature, initial, current, value, i, attempts, rng):
+    scale = temperature * exp(-4 * i / attempts)
+    return scale > 0 and rng.random() < exp((current - value) / scale)
+
+
+def _temperature_step(move, score, attempts, seed, temperature):
     if not isfinite(temperature) or temperature < 0:
         raise ValueError("temperature must be finite and nonnegative")
+    accept = partial(_metropolis, temperature) if temperature else _strict
+    return _search_step(move, score, attempts, seed, accept)
+
+
+def _search_step(move, score, attempts, seed, accept):
     if not isinstance(seed, int):
         raise ValueError("seed must be an integer")
     if type(attempts) is not int or attempts < 0:
@@ -52,7 +93,7 @@ def _search_step(move, score, attempts, seed, temperature):
         rng = Random(seed)
         acceptance = Random(seed ^ 0xAF17)
         current = best = plan
-        current_value = best_value = score(plan)
+        initial_value = current_value = best_value = score(plan)
         for i in range(attempts):
             if monotonic() >= deadline:
                 break
@@ -62,12 +103,8 @@ def _search_step(move, score, attempts, seed, temperature):
             if proposal is None:
                 continue
             value = score(proposal)
-            if value < current_value:
+            if value < current_value or accept(initial_value, current_value, value, i, attempts, acceptance):
                 current, current_value = proposal, value
-            elif temperature > 0:
-                scale = temperature * exp(-4 * i / attempts)
-                if scale and acceptance.random() < exp((current_value - value) / scale):
-                    current, current_value = proposal, value
             if value < best_value:
                 best, best_value = proposal, value
         return best

@@ -164,6 +164,8 @@ For assignments that block one another, build a step with `ejection_chain(start,
 ## Core algorithms
 
 - `restart_strength` controls the number of perturbation moves between local searches.
+- `hill_climbing` samples feasible moves and accepts improvements and ties. Set `allow_equal=False` for strict greedy descent.
+- `great_deluge` samples the same moves under a falling cost ceiling controlled by `margin` and `target`.
 - `simulated_annealing(move, score, attempts=..., temperature=..., seed=...)` explores feasible moves, can accept uphill costs as it cools, and returns its best plan. Use the resulting step in a fixed pipeline or a step policy.
 - `neighborhood_search` runs destroy-and-repair trials with strict or Metropolis acceptance.
 - `move_sequence` passes intermediate proposals between moves and scores the final plan once.
