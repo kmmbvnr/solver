@@ -22,3 +22,7 @@ The table records the construction budget (`--seconds`) and host. Use `--repair-
 Pass `--paired` to refine by swapping two intervention start dates. Each trial removes both assignments, checks resource limits and seasonal exclusions on the repaired schedule, and scores changes in the affected periods with the official quantile objective. The step stops at its deadline or after 100,000 trials.
 
 Starting both methods from the same stored schedules with a 5-second refinement budget, paired search beat the default single-date refinement on C01, C02, C03, C05, C06 and X04. C04 tied. On C01 the final objectives were 8,741.262 (paired) and 9,268.625 (single-date). The official checker accepted all 14 outputs. These refinement runs are separate from the full standings above.
+
+Pass `--chain-length 4` to try rotating dates among two to four jobs. An open chain gives a displaced job another job's date. Closing the chain gives the last job the first date and checks the resulting schedule. Each attempt searches at most 16 partial chains.
+
+Starting from the seven paired-search outputs above, a further 5-second budget gave chains two wins (C01 and C02), one tie (C04) and four losses against another paired search. Both methods retained their best feasible schedule, and the checker accepted all 14 outputs. A separate exhaustive scan on C01 and C02 confirmed that no pair improved either starting schedule by more than 1e-7. Chains still lowered the objectives from 8,741.262 to 8,729.620 and from 3,581.697 to 3,581.465, respectively.

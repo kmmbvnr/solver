@@ -12,9 +12,12 @@ Each demo supplies named steps and a score to minimize. By default the engine ru
 flowchart TD
     Start(["Start with an optional plan"]) --> Pick{"How is the next step chosen?"}
     Pick -->|Fixed order| Next["Take next in sequence<br/>Step 1 → Step 2 → … → Step N"]
-    Pick -->|Policy| Choose["Read best plan, trial history<br/>and remaining time"]
+    Pick -->|Custom policy| Choose["Read best plan, trial history<br/>and remaining time"]
+    Pick -->|UCB baseline| UCB["Balance observed reward<br/>with exploration"]
     Next -->|Step available| Run["Run step with best plan and deadline"]
+    UCB -->|Selected step| Run
     Choose -->|Selected step| Run
+    Run <-->|Optional exchange search| Chain["Displace an assignment and try to close the chain<br/>within depth, node and time limits"]
     Run <-->|Optional model solve| Ext["External solver<br/>HiGHS or CP-SAT"]
     Run --> Select["Compare proposal with best plan"]
     Select --> Keep["Keep first feasible plan or strict improvement"]
@@ -26,7 +29,7 @@ flowchart TD
     Pick -->|Time or step budget spent| End
 ```
 
-The engine owns the deadline, scoring and trial history. The demo defines its moves and when to select them. Each policy call sees which steps ran, whether their proposals were accepted and how long they took. Adaptive runs require a finite `max_steps`, including construction.
+The engine owns the deadline, scoring and trial history. The demo defines its moves and when to select them. Each policy call sees which steps ran, whether their proposals were accepted, their rewards and how long they took. Adaptive runs require a finite `max_steps`, including construction.
 
 ### Example: packing a bag
 
@@ -131,6 +134,23 @@ plan = run_pipeline([greedy, search], score, recombine=combine_bags, seconds=5)
 ```
 
 Choose steps in the list or with `policy=`. Each neighborhood step has its own attempt limit, seed and temperature. Positive temperatures use numeric score units. The pipeline tries `recombine` when a step returns a distinct proposal and there is an incumbent and time left. It keeps the best of both parents and the child. Omit the callback to compare just the parents.
+
+### Compare step-selection policies
+
+The same bag example can give the choice between beam search and neighborhood search to UCB. It tries each operator once, then uses mean reward and an exploration bonus. The constructor runs separately from the competing operators.
+
+```python
+from shiftopt import bandit_policy
+
+moves = [pack_with_beam, search]
+policy = bandit_policy(moves, construct=greedy, exploration=0.5)
+plan = run_pipeline([greedy, *moves], score, policy=policy, max_steps=6,
+                    gain=lambda old, new: old - new, seconds=5)
+```
+
+Tune `exploration` in reward units. By default, a strict improvement earns one. With `gain=`, an accepted move earns the supplied nonnegative gain. Construction, ties and misses earn zero. The [2026 routing demo](demos/roadef/2026/) compares UCB and a manual policy under the same budget.
+
+For assignments that block one another, build a step with `ejection_chain(start, extend, close, score, max_depth=3, max_nodes=16, attempts=100, seed=7)` and include it in the pipeline's step list. The demo opens a partial exchange, proposes which assignment to displace next, and checks whether the chain closes into a feasible plan. The engine searches those alternatives until it finds an improvement or reaches a limit. [2020 scheduling example](demos/roadef/2020/pairs.py)
 
 ## Core algorithms
 
