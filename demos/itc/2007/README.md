@@ -17,3 +17,15 @@ python -m demos.itc.2007.solve ctt demos/itc/2007/comp01.ctt /tmp/courses.out
 | Curriculum, comp01 | Validator confirmed zero hard violations, penalty 5. | Müller reported 5 |
 
 [Input archive and validator source](https://github.com/tomas-muller/cpsolver-itc2007) · [Competition standings](https://www.eeecs.qub.ac.uk/itc2007/winner/finalorder.htm) · [Müller's results](https://www.unitime.org/present/patat08itc.pdf)
+
+## Full competition set
+
+Each instance received ten runs with a local 60-second pipeline budget. The 2007 Mac calibration program is a 32-bit Intel executable, so the time limit on this Apple Silicon machine is a local choice. The ten run seeds were 1, 3, …, 19. Each run used two consecutive UniTime seeds. Every returned schedule passed a separate constraint and cost check.
+
+| Track | Instances solved at least once | Verified runs | Place alongside the five finalists |
+| --- | ---: | ---: | ---: |
+| Exams | 12/12 | 114/120 | 1st of 6 |
+| Post-enrolment courses | 18/24 | 171/240 | 6th of 6 |
+| Curriculum courses | 21/21 | 210/210 | 2nd of 6 |
+
+For each instance, the reconstruction pools our ten runs with the finalists’ fifty. For exams, assigning unsuccessful attempts last place reproduces the published order of the original teams. ShiftOpt also finishes first if unsuccessful attempts share their average rank. On curriculum, Müller leads with a mean rank of 17.881 against ShiftOpt’s 18.083. On post-enrolment, the demo returns no result for incomplete schedules, while the competition could score them by distance to feasibility. The exam result measures two restarts of Müller's UniTime search in ShiftOpt. [Organizers’ report and per-run tables](https://web.archive.org/web/2010id_/http://www.cs.qub.ac.uk/itc2007/winner/finalorder.htm)
