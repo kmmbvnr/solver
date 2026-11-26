@@ -48,8 +48,9 @@ class TimetableMoves:
     def __call__(self, plan, rng, deadline):
         problem = self.problem
         positions = plan[1]
-        if positions is self.base and self.undo:
-            self.state.restore(self.undo)
+        if positions is self.base:
+            if self.undo:
+                self.state.restore(self.undo)
         elif positions is not self.candidate:
             self.state = Occupancy(problem, positions)
         self.base, self.candidate, self.undo = positions, None, []

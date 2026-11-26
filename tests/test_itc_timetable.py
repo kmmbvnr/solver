@@ -41,3 +41,14 @@ class TimetableTests(unittest.TestCase):
             self.assertLess(positions[0][0], positions[2][0])
             if i % 2:
                 plan = proposal
+
+    def test_unsuccessful_attempt_reuses_unchanged_occupancy(self):
+        p = Timetable([[0]], [[0]], [0], [1], [[1]], [[]], 1, len)
+        move = TimetableMoves(p, ("room",))
+        plan = 0, ((0, 0),)
+        rng = Random(1)
+        self.assertIsNone(move(plan, rng, float("inf")))
+        state = move.state
+        self.assertIsNone(move(plan, rng, float("inf")))
+        self.assertIs(move.state, state)
+        self.assertEqual(tuple(state.positions), plan[1])
