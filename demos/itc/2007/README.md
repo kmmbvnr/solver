@@ -543,6 +543,32 @@ belong to the earlier solver.
 python -m demos.itc.2007.solve tim INSTANCE.tim OUTPUT.sln --constructor hybrid --seed 15 --seconds 60 --construction-seconds 48 --attempts 0
 ```
 
+### Hybrid standings at twenty seconds
+
+ShiftOpt ran all 24 post-enrolment instances on seeds 1, 3, …, 19 with
+20 local seconds per start, including up to 16 seconds for construction.
+The competition validator confirmed feasibility and penalty for 234 of 240
+starts. All six misses were on instance 22. Each instance had at least
+one valid schedule. Pooling the ten starts with the fifty archived finalist
+scores on each instance gave the following mean ranks (lower is better).
+
+| Place | Solver | Mean rank |
+| ---: | --- | ---: |
+| 1 | Cambazard | 14.6958 |
+| 2 | Atsuta | 27.5104 |
+| 3 | Chiarandini | 30.6042 |
+| 4 | Nothegger | 32.9104 |
+| 5 | Müller | 34.2542 |
+| 6 | ShiftOpt | 43.0250 |
+
+ShiftOpt ranked ahead of Müller on instances 1, 2, 9, 10, 12, 17 and 19.
+The twenty-second limit applies to ShiftOpt. The finalists retain their
+published competition scores.
+
+```sh
+python -m demos.itc.2007.solve tim INSTANCE.tim OUTPUT.sln --seed 1 --seconds 20 --construction-seconds 16 --policy repeat --resume --attempts 3000 --penalty-events
+```
+
 ## Previous UniTime pipeline on the full competition set
 
 Each instance received ten runs with a local 60-second pipeline budget. The 2007 Mac calibration program is a 32-bit Intel executable, so the time limit on this Apple Silicon machine is a local choice. The ten run seeds were 1, 3, …, 19. Each run used two consecutive UniTime seeds. Every returned schedule passed a separate constraint and cost check.
