@@ -33,3 +33,9 @@ class ThreeEventTests(unittest.TestCase):
         self.assertIs(step(self.initial, inf), self.initial)
         self.assertEqual(step.improved, 0)
         self.assertEqual(tuple(step.state.positions), self.initial[1])
+
+    def test_three_moves_must_jointly_respect_precedence(self):
+        self.problem.relations = [[(2, "after")], [], [(0, "before")]]
+        step = ThreeEventChains(self.problem, 3, attempts=100)
+        self.assertIs(step(self.initial, inf), self.initial)
+        self.assertEqual(tuple(step.state.positions), self.initial[1])
