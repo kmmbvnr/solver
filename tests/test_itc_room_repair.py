@@ -93,6 +93,7 @@ class RoomRepairTests(unittest.TestCase):
         self.assertIsNone(strict(initial, None, inf))
         relaxed = control(p, proposals, allow_violations=True)
         self.assertEqual([relaxed.penalty(x) for x in path], [0, 8, 8])
+        self.assertEqual(control(p, proposals, allow_violations=True, weight=32).penalty(tied), 32)
         step = ResumableAnnealing(relaxed, itemgetter(0), attempts=1, cycle_attempts=10,
                                  temperature=8, penalty=relaxed.penalty)
         self.assertEqual([step(initial, inf) for _ in range(3)], [initial, initial, repaired])

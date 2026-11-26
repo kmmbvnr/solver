@@ -24,7 +24,10 @@ room_moves = import_module("demos.itc.2007.room_repair")
 class PrecedenceMoves:
     """Price each reversed or simultaneous prerequisite pair once."""
 
-    def __init__(self, problem, proposals, *, allow_violations):
+    def __init__(self, problem, proposals, *, allow_violations, weight=8):
+        if weight <= 0:
+            raise ValueError("precedence weight must be positive")
+        self.weight = weight
         self.pairs = [(i, j) for i, relations in enumerate(problem.relations)
                       for j, relation in relations if relation == "before"]
         self.proposals = proposals
@@ -36,7 +39,7 @@ class PrecedenceMoves:
         if plan is self.last:
             return self.last_penalty
         positions = plan[1]
-        return 8 * sum(positions[i][0] >= positions[j][0] for i, j in self.pairs)
+        return self.weight * sum(positions[i][0] >= positions[j][0] for i, j in self.pairs)
 
     def __call__(self, plan, rng, deadline):
         candidate = self.proposals(plan, rng, deadline)
@@ -88,9 +91,11 @@ def main():
                         help="select event moves (displace by default for post-enrolment annealing)")
     comparison = parser.add_mutually_exclusive_group()
     comparison.add_argument("--precedence", choices=("strict", "relaxed"),
-                            help="compare rejecting out-of-order pairs with charging eight points per pair")
+                            help="compare rejecting out-of-order pairs with penalizing them")
     comparison.add_argument("--mixed-rooms", choices=("strict", "relaxed"),
-                        help="mix room repair into resumed tim search; relaxed allows missing rooms")
+                            help="mix room repair into resumed tim search; relaxed allows missing rooms")
+    parser.add_argument("--precedence-weight", type=int, default=8,
+                        help="penalty per violated prerequisite in relaxed precedence search (default: 8)")
     finish = parser.add_mutually_exclusive_group()
     finish.add_argument("--partial-rooms", action="store_true",
                         help="use the final 10%% of the tim budget to search through unroomed events")
@@ -98,6 +103,8 @@ def main():
                         help="reserve the final 10%% of the tim budget for three-event chains")
     parser.add_argument("--construction-seconds", type=int, help="cap time spent on the initial timetable")
     args = parser.parse_args()
+    if args.precedence_weight <= 0:
+        parser.error("--precedence-weight must be positive")
     if args.precedence and (args.track != "tim" or not args.resume):
         parser.error("--precedence requires tim and --resume")
     if args.mixed_rooms and (args.track != "tim" or not args.resume):
@@ -158,7 +165,8 @@ def main():
         if args.precedence:
             search_problem = replace(problem, relations=[()] * len(problem.periods))
             proposals = TimetableMoves(search_problem, move_types, select_event=moves.select_event)
-            move = PrecedenceMoves(problem, proposals, allow_violations=args.precedence == "relaxed")
+            move = PrecedenceMoves(problem, proposals, allow_violations=args.precedence == "relaxed",
+                                   weight=args.precedence_weight)
             penalty = move.penalty
         if args.mixed_rooms:
             move = room_moves.MixedRoomMoves(problem, moves, allow_partial=args.mixed_rooms == "relaxed")

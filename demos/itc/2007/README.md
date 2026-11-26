@@ -395,8 +395,8 @@ constraint penalties, phase scheduling or implementation speed.
 
 Use `--precedence relaxed` in place of `--mixed-rooms relaxed` in the command
 above. The constructor still enforces every prerequisite. During annealing,
-each pair scheduled in reverse order or at the same time adds eight points to
-the acceptance cost. Rooms, availability and student conflicts stay hard.
+each pair scheduled in reverse order or at the same time adds
+`--precedence-weight` points to the acceptance cost (default 8). Rooms, availability and student conflicts stay hard.
 The pipeline keeps only schedules that satisfy every prerequisite. The paired
 `--precedence strict` control generates moves the same way and discards any
 proposal with a violated prerequisite.
