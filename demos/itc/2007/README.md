@@ -289,6 +289,34 @@ move and the step retains strict improvements. Each attempt explores at most
 python -m demos.itc.2007.solve tim INSTANCE.tim OUTPUT.sln --seconds 300 --construction-seconds 48 --policy repeat --resume --attempts 3000 --penalty-events --three-event-finish
 ```
 
+The paired comparison used the same saved construction results and charged
+their elapsed time to both variants (48-second construction cap). Of the 240
+instance-seed pairs, 177 yielded a feasible start across 18 of 24 instances.
+At 54 or 270 seconds each pair shared the same incumbent. The control continued
+its annealing trajectory for the remaining 6 or 30 seconds. The experimental
+branch used that time for three-event chains. The minute and five-minute
+finishes branched independently from the control trajectory.
+
+| Total budget | Annealing mean rank | Chain finish mean rank | Chain wins / ties / losses | Feasible three-event proposals scored | Strict improvements accepted |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 60 s | 48.1375 | 48.3833 | 44 / 51 / 82 | 8,655,649 | 286 |
+| 300 s | 43.2646 | 43.3979 | 39 / 85 / 53 | 52,698,407 | 245 |
+
+Each configuration placed sixth of six. Counts include repeated proposals.
+On 19 pairs the finish beat the control at five minutes after tying or losing
+at one minute. Extending ordinary annealing from one to five minutes reduced
+the median paired penalty by 142 points (18.3% median relative reduction
+among nonzero minute scores). The chain finish stays opt-in.
+
+A separate 15-minute run covered sets 5, 17 and 20 with seeds 1 and 3.
+The 90-second finish won twice, tied three times and lost once. On set 5,
+seed 3, the annealing and chain scores were respectively 640 and 738 at one
+minute, 40 and 54 at five minutes, and 2 and 1 at fifteen minutes. The lowest
+published finalist score on that instance was 5 under the original competition
+conditions. The validator confirmed all 708 full-track checkpoint schedules
+and all 36 checkpoints in the extended sample. The 15-minute sample has no
+full-track place.
+
 ## Previous UniTime pipeline on the full competition set
 
 Each instance received ten runs with a local 60-second pipeline budget. The 2007 Mac calibration program is a 32-bit Intel executable, so the time limit on this Apple Silicon machine is a local choice. The ten run seeds were 1, 3, …, 19. Each run used two consecutive UniTime seeds. Every returned schedule passed a separate constraint and cost check.
