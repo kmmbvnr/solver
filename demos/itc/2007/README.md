@@ -401,6 +401,48 @@ The pipeline keeps only schedules that satisfy every prerequisite. The paired
 `--precedence strict` control generates moves the same way and discards any
 proposal with a violated prerequisite.
 
+With 500,000 proposals on sets 5, 8 and 14 (seeds 1 and 3), weight 8 beat the
+strict control once and lost five times. On set 5, 99.8% and 99.9% of attempts
+started from an out-of-order timetable. With weight 32 these shares fell to
+16.8% and 14.3%. The best feasible penalties were 768 and 624, versus 760 and
+656 for the strict control. Before the occupancy fix below, extending both
+searches to 15 minutes gave 1,403 and 1,415 at weight 8, versus 557 and 278
+for strict. The ordinary search checks precedence while generating a move
+and can try another placement within the same attempt.
+
+### Search speed and quality from identical starts
+
+Set 5 started at penalties 1,786 (seed 1) and 1,876 (seed 3). UniTime loaded
+the same two complete schedules as ShiftOpt. The table reports validator-checked
+soft penalties from local wall-clock runs. Each ShiftOpt column uses ordinary
+annealing with displacement moves and penalized-event selection.
+
+| Seed | UniTime 59 s | ShiftOpt 59 s | UniTime 5 min | ShiftOpt 5 min | ShiftOpt 10 min | ShiftOpt before fix, 15 min |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 355 | 437 | 140 | 311 | 61 | 311 |
+| 3 | 47 | 347 | 47 | 2 | 2 | 2 |
+
+ShiftOpt first reached the two 59-second UniTime scores at burst boundaries
+after 245 and 131 seconds. Before the fix it needed 662 and 239 seconds for
+the same targets. With ten minutes it beat both five-minute UniTime results
+in this two-start comparison. The experiment does not estimate a track rank.
+
+An unchanged timetable used to trigger a full occupancy rebuild after an
+unsuccessful attempt. Keeping the occupancy reduced builds from 20,074 to one
+in the first 50,000 attempts on seed 1. Over four alternating 200,000-attempt
+runs (two seeds, each repeated twice), mean CPU time fell from 14.35 to
+4.59 seconds. The best and current plans and both random generators matched
+every 50,000 attempts through 500,000 on both seeds. Separately, compiling
+the three original hot modules unchanged with Cython 3.3.2 gave a 1.15×
+CPU speedup. The cache fix runs in plain Python.
+
+A separate instrumented comparison counted transitions to a different
+timetable, ignoring proposals that left assignments unchanged. After 500,000
+transitions, ShiftOpt had penalties 437 and 376 after 36.1 and 35.6 seconds.
+UniTime had 975 and 994 after 3.72 and 3.69 seconds. A transition can change
+multiple events; the two solvers do different work per transition. Times
+are local to this machine and include the observation overhead.
+
 ## Previous UniTime pipeline on the full competition set
 
 Each instance received ten runs with a local 60-second pipeline budget. The 2007 Mac calibration program is a 32-bit Intel executable, so the time limit on this Apple Silicon machine is a local choice. The ten run seeds were 1, 3, …, 19. Each run used two consecutive UniTime seeds. Every returned schedule passed a separate constraint and cost check.
