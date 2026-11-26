@@ -1,6 +1,6 @@
 # ITC 2007 — all three tracks
 
-The Python pipeline first builds a feasible timetable by placing events and reinserting the events they displace. Simulated annealing moves individual events, swaps assignments and exchanges connected groups between two periods. On the curriculum track a separate step also exchanges room labels. Each edition uses the shared annealing step from ShiftOpt.
+The Python pipeline first places events and reinserts those they displace. On the post-enrolment track, the default hybrid constructor switches to tabu repair if brief reinsertion leaves events unassigned. Use `--constructor reinsert` to reproduce the earlier post-enrolment experiments. Simulated annealing moves individual events, swaps assignments and exchanges connected groups between two periods. On the curriculum track a separate step also exchanges room labels. Each edition uses the shared annealing step from ShiftOpt.
 
 Install ShiftOpt with `python -m pip install -e .` and run from the repository root. The default budget is 60 seconds and the default seed is 1. Earlier post-enrolment measurements through the first full-track standings table used blocker count alone. Their commands below select it explicitly.
 
@@ -504,6 +504,44 @@ The extra time improved 128 of 177 valid runs across 18 solved instances;
 the number with zero penalty rose from 14 to 21. Of the 5.1146 mean-rank
 gap to Müller at fifteen minutes, 4.7042 points came from the 63 failed
 starts, comparing each start with Müller's mean rank on its instance.
+
+### Repairing incomplete post-enrolment timetables
+
+We repeated construction on all 24 instances with the same ten odd seeds and
+48-second construction budget. The hybrid gives reinsertion up to four seconds,
+then starts tabu repair from a complete assignment that can contain conflicts.
+The search relocates conflicting events and raises the weights of persistent
+violations after stagnation. The competition validator checked every returned
+schedule for feasibility and soft cost.
+
+| Instance | Earlier reinsertion | Hybrid | Historical Müller finalist |
+| --- | ---: | ---: | ---: |
+| 1 | 0/10 | 10/10 | 3/10 |
+| 2, 9, 10, 19 (each) | 0/10 | 10/10 | 0/10 |
+| 22 | 0/10 | 8/10 | 6/10 |
+| 23 | 7/10 | 10/10 | 10/10 |
+| Other 17 (combined) | 170/170 | 170/170 | — |
+| All | 177/240 | 238/240 | — |
+
+Counts are complete feasible schedules. The historical column counts runs with
+zero distance to feasibility in the organizers’ tables. In a separate local
+48-second UniTime run on seed 15, only instance 1 reached feasibility among
+these seven. The hybrid solved all seven on that seed.
+
+On instance 22, reinsertion reached 550 of 600 events on seed 15. Among the
+50 remaining events, 30 had no eligible period free of student clashes.
+All 50 had a free eligible room in at least one eligible period when student
+and ordering constraints were ignored. A hybrid with fixed conflict weights
+solved only one of ten starts on this instance. Adaptive weights solved eight.
+The two failures on instance 22 (seeds 13 and 17) both passed on a separate
+retry with a 90-second construction budget, after 35 and 62 seconds of wall
+time. These retries are excluded from the 48-second tally.
+This benchmark measures construction. The fifteen-minute standings above
+belong to the earlier solver.
+
+```sh
+python -m demos.itc.2007.solve tim INSTANCE.tim OUTPUT.sln --constructor hybrid --seed 15 --seconds 60 --construction-seconds 48 --attempts 0
+```
 
 ## Previous UniTime pipeline on the full competition set
 

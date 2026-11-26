@@ -178,6 +178,7 @@ For assignments that block one another, build a step with `ejection_chain(start,
 - `ResumableAnnealing(move, score, attempts=3000, cycle_attempts=50000, temperature=8, seed=1)` gives control back to the pipeline after each burst. Reuse the same step within a run to keep the current point, best plan, random streams and cooling position. At the cycle boundary it restarts from the best plan with the next seed. Construct a fresh step for each independent run. Supply an optional `penalty(state)` to explore partial solutions across bursts. Zero marks a feasible state. A positive penalty adds to the move cost. The pipeline receives the lowest-scoring feasible plan seen.
 - `neighborhood_search` runs destroy-and-repair trials with strict or Metropolis acceptance.
 - `move_sequence` passes intermediate proposals between moves and scores the final plan once.
+- `tabu_assignment(periods, resources, clashes, precedences=(), seed=...)` repairs a complete assignment by moving conflicting items between slots and exclusive resources. It raises the cost of persistent violations and returns a feasible assignment.
 - `assignment_constructor(start, moves_per_start=..., starts=..., conflict_weight=..., seed=...)` builds complete assignments by placing items and reinserting the items they displace. The adapter supplies an empty state, an item order, eligible choices and blocker bit masks. A positive conflict weight penalizes repeated evictions by the same item and choice. The [ITC timetable](demos/itc/2007/) and [DIMACS coloring](demos/dimacs/1992/) demos share this step.
 - `reassignment_search` tries transfers, rebuilds the affected assignments and compares full plan costs.
 - `bounded_best_first` searches across depths with a bounded frontier, retaining improvements across restarts.
@@ -257,7 +258,7 @@ Each demo runs its own pipeline and writes a solution in the competition format.
 | Edition | Tracks | Results |
 | --- | --- | --- |
 | [2002](demos/itc/2002/) | University events | Python: competition01 penalty 261 in 60 s. Previous UniTime pipeline: 4th of 12 |
-| [2007](demos/itc/2007/) | Exams, post-enrolment, curriculum | Python: 6th of 6 on the full post-enrolment track (18/24 instances solved, mean rank 41.95 at five minutes and 39.57 at fifteen minutes with ordinary annealing). Previous UniTime pipeline: 1st, 6th and 2nd of 6 |
+| [2007](demos/itc/2007/) | Exams, post-enrolment, curriculum | Python: hybrid construction solved 24/24 post-enrolment instances (238/240 starts in 48 s each). Earlier reinsertion pipeline: 6th of 6, mean rank 39.57 at fifteen minutes. Previous UniTime pipeline: 1st, 6th and 2nd of 6 |
 | [2011](demos/itc/2011/) | High-school timetabling | Round 2: 79/180 verified schedules, 269 s per trial. Reconstructed 4th of 5 |
 | [2019](demos/itc/2019/) | University classes, rooms and student sectioning | 1/30 feasible from scratch in 60 s each. Four points, reconstructed 6th of 6 |
 | [2021](demos/itc/2021/) | Sports timetabling | 0/45 feasible from scratch in 60 s each. Zero points, reconstructed 14th of 14 |
