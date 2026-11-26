@@ -23,3 +23,22 @@ class PenaltyEventTests(unittest.TestCase):
         rng = Mock()
         rng.randrange.side_effect = [1, 0, 0]
         self.assertEqual(penalty_event(state, rng), 1)
+
+    def test_weighted_draw_tracks_day_changes_and_rollback(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        from demos.itc.events import penalty_event
+
+        # Two students attend event 0 and one attends event 1.
+        state = SimpleNamespace(members=[7] + [0] * 44, period=[3] + [0] * 44,
+                                problem=SimpleNamespace(members=[3, 4, 3]),
+                                positions=[(0, 0), (0, 1), (9, 0)])
+        rng = Mock()
+        rng.randrange.side_effect = [1, 0, 1, 1, 0, 2, 1, 0, 0, 1, 0, 1]
+        self.assertEqual(penalty_event(state, rng), 0)
+        self.assertEqual(penalty_event(state, rng), 1)
+        # Moving event 2 to the same day removes the single-class penalty for event 0.
+        state.period[1], state.members[1] = 4, 3
+        self.assertEqual(penalty_event(state, rng), 1)
+        state.period[1], state.members[1] = 0, 0
+        self.assertEqual(penalty_event(state, rng), 0)

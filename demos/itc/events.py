@@ -1,5 +1,6 @@
 """Read ITC event timetables and count student penalties."""
 
+from bisect import bisect_right
 from functools import partial
 
 import numpy as np
@@ -41,22 +42,40 @@ def penalized_students(slots, offset):
     return penalized
 
 
+def event_draw(state, slot):
+    """Cache the weighted event draw while the day's event assignments match."""
+    draws = getattr(state, "penalty_draws", None)
+    if draws is None:
+        state.penalty_draws = draws = [None] * 45
+    start = slot - slot % 9
+    day = state.period[start:start + 9]
+    cached = draws[slot]
+    if cached is not None and cached[0] == day:
+        return cached[1], cached[2]
+
+    students = penalized_students(state.members[start:start + 9], slot % 9)
+    events, totals = [], []
+    total = 0
+    occupants = state.period[slot]
+    while students and occupants:
+        bit = occupants & -occupants
+        occupants ^= bit
+        event = bit.bit_length() - 1
+        weight = (state.problem.members[event] & students).bit_count()
+        if weight:
+            total += weight
+            events.append(event)
+            totals.append(total)
+    draws[slot] = day, events, totals
+    return events, totals
+
+
 def penalty_event(state, rng):
     """Mix uniform moves with events sampled by affected student count."""
     if rng.randrange(2):
-        slot = rng.randrange(45)
-        start = slot - slot % 9
-        penalized = penalized_students(state.members[start:start + 9], slot % 9)
-        if penalized:
-            draw = rng.randrange(penalized.bit_count())
-            occupants = state.period[slot]
-            while occupants:
-                bit = occupants & -occupants
-                occupants ^= bit
-                event = bit.bit_length() - 1
-                draw -= (state.problem.members[event] & penalized).bit_count()
-                if draw < 0:
-                    return event
+        events, totals = event_draw(state, rng.randrange(45))
+        if totals:
+            return events[bisect_right(totals, rng.randrange(totals[-1]))]
     return rng.randrange(len(state.positions))
 
 
