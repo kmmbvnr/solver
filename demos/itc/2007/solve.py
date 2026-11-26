@@ -57,6 +57,8 @@ def main():
                         help="penalize repeated evictions during construction (enabled by default for tim)")
     parser.add_argument("--event-moves", choices=("standard", "displace"),
                         help="select event moves (displace by default for post-enrolment annealing)")
+    parser.add_argument("--mixed-rooms", choices=("strict", "relaxed"),
+                        help="mix room repair into resumed tim search; relaxed allows missing rooms")
     finish = parser.add_mutually_exclusive_group()
     finish.add_argument("--partial-rooms", action="store_true",
                         help="use the final 10%% of the tim budget to search through unroomed events")
@@ -64,6 +66,8 @@ def main():
                         help="reserve the final 10%% of the tim budget for three-event chains")
     parser.add_argument("--construction-seconds", type=int, help="cap time spent on the initial timetable")
     args = parser.parse_args()
+    if args.mixed_rooms and (args.track != "tim" or not args.resume):
+        parser.error("--mixed-rooms requires tim and --resume")
     if args.partial_rooms and args.track != "tim":
         parser.error("--partial-rooms requires tim")
     if args.three_event_finish and args.track != "tim":
@@ -116,8 +120,12 @@ def main():
     factory = partial(methods[args.search], moves, score, attempts=args.attempts - polish)
     operators = [SearchBurst(factory, args.seed)]
     if args.resume:
-        operators = [ResumableAnnealing(moves, score, attempts=args.attempts,
-                                        cycle_attempts=args.cycle_attempts, temperature=8, seed=args.seed)]
+        move, penalty = moves, None
+        if args.mixed_rooms:
+            move = room_moves.MixedRoomMoves(problem, moves, allow_partial=args.mixed_rooms == "relaxed")
+            penalty = move.penalty
+        operators = [ResumableAnnealing(move, score, attempts=args.attempts, cycle_attempts=args.cycle_attempts,
+                                        temperature=8, seed=args.seed, penalty=penalty)]
     if args.policy == "stagnation":
         alternate = methods["anneal" if args.search == "hill" else "hill"]
         factory = partial(alternate, moves, score, attempts=args.attempts)

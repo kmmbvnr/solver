@@ -342,6 +342,21 @@ In the first 50,000 attempts on these starts, the new search entered a
 partial timetable 11 and 18 times, respectively. These runs support keeping
 the room move optional. They cover a sample of the post-enrolment track.
 
+## Mixed search against UniTime
+
+Run the same command with `--mixed-rooms strict` and `--mixed-rooms relaxed`:
+
+```sh
+python -m demos.itc.2007.solve tim demos/itc/2007/comp-2007-2-5.tim /tmp/events.sln \
+    --seconds 300 --policy repeat --resume --attempts 3000 --penalty-events --seed 1 --mixed-rooms relaxed
+```
+
+From a complete timetable, each attempt samples the ordinary moves with
+probability 0.9 and the room-repair move with probability 0.1. Strict mode
+discards any proposal that leaves an event without a room. Relaxed mode can
+accept it at an eight-point penalty per missing room and uses room-repair
+moves until it reaches a complete timetable or the annealing cycle restarts.
+
 ## Previous UniTime pipeline on the full competition set
 
 Each instance received ten runs with a local 60-second pipeline budget. The 2007 Mac calibration program is a 32-bit Intel executable, so the time limit on this Apple Silicon machine is a local choice. The ten run seeds were 1, 3, …, 19. Each run used two consecutive UniTime seeds. Every returned schedule passed a separate constraint and cost check.

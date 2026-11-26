@@ -50,3 +50,26 @@ class RoomRepairTests(unittest.TestCase):
         self.assertGreater(repair.missing_room_penalty(partial_plan), 0)
         step = repair.partial_room_search(p, seed=4)
         self.assertEqual(step(initial, inf), (0, ((1, 0), (1, 1))))
+
+    def test_mixed_search_filters_only_partial_proposals(self):
+        from random import Random
+        from unittest.mock import Mock
+
+        p = problem([[0], [0, 1]])
+        initial = 1, ((0, 0), (1, 0))
+        ordinary = Mock(return_value=initial)
+        strict = repair.MixedRoomMoves(p, ordinary, allow_partial=False)
+        relaxed = repair.MixedRoomMoves(p, ordinary, allow_partial=True)
+        rng = Mock()
+        rng.randrange.return_value = 0
+        rng.choice.side_effect = [1, 0, 1, 0]
+        partial_plan = relaxed(initial, rng, inf)
+        self.assertEqual(relaxed.penalty(partial_plan), 8)
+        self.assertIsNone(strict(initial, rng, inf))
+        rng.randrange.return_value = 1
+        rng.choice.side_effect = [1, 1]
+        repaired = relaxed(partial_plan, rng, inf)
+        self.assertEqual(repaired, (0, ((1, 0), (1, 1))))
+        ordinary.assert_not_called()
+        self.assertEqual(strict(initial, Random(0), inf), initial)
+        ordinary.assert_called_once()

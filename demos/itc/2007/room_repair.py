@@ -117,3 +117,31 @@ def partial_room_search(problem, seed):
     return ResumableAnnealing(partial(partial_room_move, problem), itemgetter(0),
                               attempts=3000, cycle_attempts=50000, temperature=8,
                               penalty=missing_room_penalty, seed=seed)
+
+
+class MixedRoomMoves:
+    """Mix ordinary moves with room repair, which also handles partial timetables."""
+
+    def __init__(self, problem, ordinary, *, allow_partial):
+        self.problem = problem
+        self.ordinary = ordinary
+        self.allow_partial = allow_partial
+        self.last = None
+        self.last_penalty = 0
+
+    def penalty(self, plan):
+        if plan is self.last:
+            return self.last_penalty
+        return missing_room_penalty(plan)
+
+    def __call__(self, plan, rng, deadline):
+        if self.penalty(plan) or rng.randrange(10) == 0:
+            proposal = partial_room_move(self.problem, plan, rng, deadline)
+            penalty = missing_room_penalty(proposal) if proposal is not None else 0
+        else:
+            proposal = self.ordinary(plan, rng, deadline)
+            penalty = 0
+        self.last, self.last_penalty = proposal, penalty
+        if penalty and not self.allow_partial:
+            return None
+        return proposal
