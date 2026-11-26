@@ -60,6 +60,44 @@ def penalty_event(state, rng):
     return rng.randrange(len(state.positions))
 
 
+def displace_event(state, event, target, rng):
+    """Move into a period, then rehome at most one displaced event."""
+    p = state.problem
+    source = state.positions[event][0]
+    if source == target:
+        return []
+    clashes = state.period[target] & p.clashes[event]
+    if clashes.bit_count() > 1:
+        return []
+    rooms = p.rooms[event]
+    offset = rng.randrange(len(rooms))
+    best = None
+    for k in range(len(rooms)):
+        room = rooms[(k + offset) % len(rooms)]
+        blocked = clashes | state.rooms[target][room]
+        if not blocked:
+            return [(event, target, room)]
+        if best is None and blocked.bit_count() == 1:
+            best = room, blocked.bit_length() - 1
+    if best is None:
+        return []
+    room, other = best
+    ignored = (1 << event) | (1 << other)
+    for trial in range(6):
+        t = source if trial == 0 else rng.choice(p.periods[other])
+        if t not in p.periods[other] or state.period[t] & p.clashes[other] & ~ignored:
+            continue
+        if t == target and clashes:
+            continue
+        alternatives = p.rooms[other]
+        start = rng.randrange(len(alternatives))
+        for k in range(len(alternatives)):
+            r = alternatives[(start + k) % len(alternatives)]
+            if (t, r) != (target, room) and not state.rooms[t][r] & ~ignored:
+                return [(event, target, room), (other, t, r)]
+    return []
+
+
 def event_delta(positions, state, previous):
     return day_delta(state, previous, 9, student_day_cost)
 
@@ -102,6 +140,7 @@ def read_events(path, post_enrolment):
         partial(event_cost, *np.nonzero(attendance), students),
         members=[sum(1 << int(i) for i in np.flatnonzero(row)) for row in attendance.T],
         delta=event_delta,
+        displacement_move=displace_event,
     )
 
 

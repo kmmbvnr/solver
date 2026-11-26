@@ -23,6 +23,7 @@ class Timetable:
     members: list | None = None
     delta: Callable | None = None
     compact_move: Callable | None = None
+    displacement_move: Callable | None = None
 
 
 class TimetableMoves:
@@ -34,6 +35,8 @@ class TimetableMoves:
         self.select_event = select_event
         self.operators = tuple(operators)
         available = set(TimetableMoves.operators)
+        if problem.displacement_move is not None:
+            available.add("displace")
         if problem.compact_move is not None:
             available.add("compact")
         if not self.operators or not set(self.operators) <= available:
@@ -56,7 +59,9 @@ class TimetableMoves:
             time, room = positions[event]
             kind = rng.choice(self.operators)
             target = rng.choice(problem.periods[event])
-            if kind == "compact":
+            if kind == "displace":
+                changes = problem.displacement_move(self.state, event, target, rng)
+            elif kind == "compact":
                 changes = problem.compact_move(self.state, rng, deadline)
                 if not changes and self.operators == ("compact",):
                     return None
