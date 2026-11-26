@@ -443,6 +443,44 @@ UniTime had 975 and 994 after 3.72 and 3.69 seconds. A transition can change
 multiple events; the two solvers do different work per transition. Times
 are local to this machine and include the observation overhead.
 
+### Time and transitions to a target penalty
+
+From the same feasible starts, each solver had five minutes to halve and
+quarter the initial penalty (rounded down). Counts below include transitions
+to a different timetable. Each reached threshold passed the competition
+validator. A dash means the solver missed the target within the budget.
+
+| Set / seed | Halve: ShiftOpt | Halve: UniTime | Quarter: ShiftOpt | Quarter: UniTime |
+| --- | ---: | ---: | ---: | ---: |
+| 5 / 1 | 90,118 | 579,057 | 356,455 | 1,451,674 |
+| 5 / 3 | 112,121 | 582,439 | 338,007 | 1,213,459 |
+| 8 / 1 | 4,232 | 369,862 | 64,998 | 754,869 |
+| 8 / 3 | 5,947 | 255,453 | 26,893 | 612,494 |
+| 14 / 1 | 1,715,484 | 20,641,068 | — | — |
+| 14 / 3 | 3,814,866 | 15,121,447 | — | 46,909,135 |
+
+Each solver reached the halfway target first on three starts in the timed
+traces. For example, set 5 / seed 1 reached penalty 893 in 4.54 s with
+ShiftOpt and 3.15 s with UniTime. On set 8 / seed 1 the times to penalty
+835 were 0.39 and 3.39 s. These traces used ShiftOpt before the event draw
+cache described below. Transition counts include plateau moves and depend
+on how many assignments one move changes.
+
+Across the first million attempts on each start, displacements accounted
+for 5,488 points of incumbent improvement and period chains for 1,528.
+Room-only moves contributed zero points directly. Rejecting those proposals
+while keeping the same sampling weights worsened the final penalty on all
+six starts; on set 5 the two scores rose from 437 and 376 to 678 and 653.
+
+The event selector now reuses the weighted draw for a period while the day's
+event assignments match. In alternating runs on set 5, mean CPU time for
+500,000 attempts fell from 13.66 to 11.41 s. On sets 8 and 14 (seed 1),
+200,000 attempts took 6.05 and 6.36 s before, and 5.27 and 5.23 s after.
+The replay matched every proposal and acceptance decision, plus the incumbent
+and both random generators at cycle boundaries, for 500,000 attempts on
+each of the six starts. In paired five-minute runs on set 5, the old and
+new selectors both finished at penalties 311 and 8 (seeds 1 and 3).
+
 ## Previous UniTime pipeline on the full competition set
 
 Each instance received ten runs with a local 60-second pipeline budget. The 2007 Mac calibration program is a 32-bit Intel executable, so the time limit on this Apple Silicon machine is a local choice. The ten run seeds were 1, 3, …, 19. Each run used two consecutive UniTime seeds. Every returned schedule passed a separate constraint and cost check.
