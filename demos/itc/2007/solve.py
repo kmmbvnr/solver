@@ -1,6 +1,7 @@
 """Construct and improve an exam, event or curriculum timetable."""
 
 import argparse
+from dataclasses import replace
 from functools import partial
 from importlib import import_module
 from itertools import count, repeat
@@ -18,6 +19,34 @@ exams = import_module("demos.itc.2007.exams")
 
 ThreeEventChains = import_module("demos.itc.2007.chains").ThreeEventChains
 room_moves = import_module("demos.itc.2007.room_repair")
+
+
+class PrecedenceMoves:
+    """Price each reversed or simultaneous prerequisite pair once."""
+
+    def __init__(self, problem, proposals, *, allow_violations):
+        self.pairs = [(i, j) for i, relations in enumerate(problem.relations)
+                      for j, relation in relations if relation == "before"]
+        self.proposals = proposals
+        self.allow_violations = allow_violations
+        self.last = None
+        self.last_penalty = 0
+
+    def penalty(self, plan):
+        if plan is self.last:
+            return self.last_penalty
+        positions = plan[1]
+        return 8 * sum(positions[i][0] >= positions[j][0] for i, j in self.pairs)
+
+    def __call__(self, plan, rng, deadline):
+        candidate = self.proposals(plan, rng, deadline)
+        if candidate is None:
+            return None
+        penalty = self.penalty(candidate)
+        self.last, self.last_penalty = candidate, penalty
+        if penalty and not self.allow_violations:
+            return None
+        return candidate
 
 
 class SearchBurst:
@@ -57,7 +86,10 @@ def main():
                         help="penalize repeated evictions during construction (enabled by default for tim)")
     parser.add_argument("--event-moves", choices=("standard", "displace"),
                         help="select event moves (displace by default for post-enrolment annealing)")
-    parser.add_argument("--mixed-rooms", choices=("strict", "relaxed"),
+    comparison = parser.add_mutually_exclusive_group()
+    comparison.add_argument("--precedence", choices=("strict", "relaxed"),
+                            help="compare rejecting out-of-order pairs with charging eight points per pair")
+    comparison.add_argument("--mixed-rooms", choices=("strict", "relaxed"),
                         help="mix room repair into resumed tim search; relaxed allows missing rooms")
     finish = parser.add_mutually_exclusive_group()
     finish.add_argument("--partial-rooms", action="store_true",
@@ -66,6 +98,8 @@ def main():
                         help="reserve the final 10%% of the tim budget for three-event chains")
     parser.add_argument("--construction-seconds", type=int, help="cap time spent on the initial timetable")
     args = parser.parse_args()
+    if args.precedence and (args.track != "tim" or not args.resume):
+        parser.error("--precedence requires tim and --resume")
     if args.mixed_rooms and (args.track != "tim" or not args.resume):
         parser.error("--mixed-rooms requires tim and --resume")
     if args.partial_rooms and args.track != "tim":
@@ -121,6 +155,11 @@ def main():
     operators = [SearchBurst(factory, args.seed)]
     if args.resume:
         move, penalty = moves, None
+        if args.precedence:
+            search_problem = replace(problem, relations=[()] * len(problem.periods))
+            proposals = TimetableMoves(search_problem, move_types, select_event=moves.select_event)
+            move = PrecedenceMoves(problem, proposals, allow_violations=args.precedence == "relaxed")
+            penalty = move.penalty
         if args.mixed_rooms:
             move = room_moves.MixedRoomMoves(problem, moves, allow_partial=args.mixed_rooms == "relaxed")
             penalty = move.penalty

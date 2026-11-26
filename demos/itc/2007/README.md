@@ -391,6 +391,16 @@ constraint penalties, phase scheduling or implementation speed.
 
 [UniTime competition configuration](https://github.com/tomas-muller/cpsolver-itc2007/blob/a253a5a/src/tim.properties)
 
+## Temporary precedence violations
+
+Use `--precedence relaxed` in place of `--mixed-rooms relaxed` in the command
+above. The constructor still enforces every prerequisite. During annealing,
+each pair scheduled in reverse order or at the same time adds eight points to
+the acceptance cost. Rooms, availability and student conflicts stay hard.
+The pipeline keeps only schedules that satisfy every prerequisite. The paired
+`--precedence strict` control generates moves the same way and discards any
+proposal with a violated prerequisite.
+
 ## Previous UniTime pipeline on the full competition set
 
 Each instance received ten runs with a local 60-second pipeline budget. The 2007 Mac calibration program is a 32-bit Intel executable, so the time limit on this Apple Silicon machine is a local choice. The ten run seeds were 1, 3, …, 19. Each run used two consecutive UniTime seeds. Every returned schedule passed a separate constraint and cost check.

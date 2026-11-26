@@ -73,3 +73,26 @@ class RoomRepairTests(unittest.TestCase):
         ordinary.assert_not_called()
         self.assertEqual(strict(initial, Random(0), inf), initial)
         ordinary.assert_called_once()
+
+    def test_precedence_penalty_counts_pairs_and_hides_infeasible_incumbents(self):
+        from operator import itemgetter
+        from shiftopt import ResumableAnnealing
+
+        p = problem([[0], [1]])
+        p.periods = [range(3), range(3)]
+        p.slots = 3
+        p.relations = [[(1, "before")], [(0, "after")]]
+        initial = 20, ((0, 0), (1, 1))
+        tied = 5, ((1, 0), (1, 1))
+        reversed_plan = 4, ((1, 0), (0, 1))
+        repaired = 1, ((1, 0), (2, 1))
+        path = {initial: tied, tied: reversed_plan, reversed_plan: repaired}
+        proposals = lambda plan, rng, deadline: path[plan]
+        control = import_module("demos.itc.2007.solve").PrecedenceMoves
+        strict = control(p, proposals, allow_violations=False)
+        self.assertIsNone(strict(initial, None, inf))
+        relaxed = control(p, proposals, allow_violations=True)
+        self.assertEqual([relaxed.penalty(x) for x in path], [0, 8, 8])
+        step = ResumableAnnealing(relaxed, itemgetter(0), attempts=1, cycle_attempts=10,
+                                 temperature=8, penalty=relaxed.penalty)
+        self.assertEqual([step(initial, inf) for _ in range(3)], [initial, initial, repaired])
