@@ -357,6 +357,40 @@ discards any proposal that leaves an event without a room. Relaxed mode can
 accept it at an eight-point penalty per missing room and uses room-repair
 moves until it reaches a complete timetable or the annealing cycle restarts.
 
+Each row below used a 300-second budget. The ShiftOpt pair reused the same
+saved construction and charged its elapsed time to both runs. Each UniTime
+run started from scratch with the same seed and a 300-second solver timeout.
+The Java control changed only `-DTim.AllowNoRoom=false`. All four columns
+give soft penalties confirmed by the competition validator.
+
+| Set | Seed | ShiftOpt strict | ShiftOpt relaxed | UniTime, rooms required | UniTime, default |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 5 | 1 | 98 | 471 | 39 | 16 |
+| 5 | 3 | 568 | 267 | 125 | 0 |
+| 8 | 1 | 220 | 333 | 0 | 1 |
+| 8 | 3 | 0 | 0 | 45 | 92 |
+| 14 | 1 | 787 | 817 | 434 | 138 |
+| 14 | 3 | 1,079 | 991 | 219 | 461 |
+
+Against its strict control, ShiftOpt relaxed won two pairs, tied one and lost
+three. With a fixed budget of 500,000 proposals per run on the same six starts,
+it won one and lost five. UniTime's default room setting won three pairs and
+lost three against its own control at 300 seconds. These six pairs do not
+establish a track ranking.
+
+Two warm starts isolated local search on set 5. Both solvers received the
+same complete ShiftOpt timetables (initial penalties 1,786 and 1,876).
+At the one-minute checkpoint the strict/relaxed ShiftOpt penalties were
+686/793 and 771/758. Given 59 seconds after construction, UniTime reached
+355 and 47. Its trace first beat the better ShiftOpt minute score with a
+fully feasible timetable after 4.53 and 4.34 seconds, respectively. Both
+traces visited schedules with precedence violations. The current ShiftOpt
+room move enforces precedence at every proposal. The warm starts locate a
+gap in local search; they do not isolate the contributions of move choice,
+constraint penalties, phase scheduling or implementation speed.
+
+[UniTime competition configuration](https://github.com/tomas-muller/cpsolver-itc2007/blob/a253a5a/src/tim.properties)
+
 ## Previous UniTime pipeline on the full competition set
 
 Each instance received ten runs with a local 60-second pipeline budget. The 2007 Mac calibration program is a 32-bit Intel executable, so the time limit on this Apple Silicon machine is a local choice. The ten run seeds were 1, 3, …, 19. Each run used two consecutive UniTime seeds. Every returned schedule passed a separate constraint and cost check.
