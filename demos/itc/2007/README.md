@@ -569,6 +569,28 @@ published competition scores.
 python -m demos.itc.2007.solve tim INSTANCE.tim OUTPUT.sln --seed 1 --seconds 20 --construction-seconds 16 --policy repeat --resume --attempts 3000 --penalty-events
 ```
 
+### Hybrid standings at five minutes
+
+Each of the 240 starts ran from scratch with a 300-second local budget and up
+to 90 seconds for construction. The twenty-second experiment above used a
+16-second construction cap. Both runs used the same 24 instances, ten seeds,
+annealing settings and archived finalist scores. The competition validator
+accepted 239 schedules, including 14 with zero soft penalty. Only instance
+22, seed 17, exhausted construction without a feasible schedule.
+
+| Place | Solver | Mean rank |
+| ---: | --- | ---: |
+| 1 | Cambazard | 15.3167 |
+| 2 | Atsuta | 28.9625 |
+| 3 | Chiarandini | 32.4813 |
+| 4 | Nothegger | 34.0812 |
+| 5 | Müller | 36.0375 |
+| 6 | ShiftOpt | 36.1208 |
+
+ShiftOpt led Müller on 11 of 24 instances. Its overall gap to fifth fell from
+8.7708 at twenty seconds to 0.0833 at five minutes. To reproduce a start,
+use the command above with `--seconds 300 --construction-seconds 90`.
+
 ## Previous UniTime pipeline on the full competition set
 
 Each instance received ten runs with a local 60-second pipeline budget. The 2007 Mac calibration program is a 32-bit Intel executable, so the time limit on this Apple Silicon machine is a local choice. The ten run seeds were 1, 3, …, 19. Each run used two consecutive UniTime seeds. Every returned schedule passed a separate constraint and cost check.

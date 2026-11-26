@@ -258,7 +258,7 @@ Each demo runs its own pipeline and writes a solution in the competition format.
 | Edition | Tracks | Results |
 | --- | --- | --- |
 | [2002](demos/itc/2002/) | University events | Python: competition01 penalty 261 in 60 s. Previous UniTime pipeline: 4th of 12 |
-| [2007](demos/itc/2007/) | Exams, post-enrolment, curriculum | Python: 6th of 6 on post-enrolment at 20 s per start (mean rank 43.025, 234/240 feasible across 24/24 instances). Hybrid construction alone solved 238/240 with a 48 s cap. Earlier reinsertion pipeline: 6th of 6, mean rank 39.57 at fifteen minutes. Previous UniTime pipeline: 1st, 6th and 2nd of 6 |
+| [2007](demos/itc/2007/) | Exams, post-enrolment, curriculum | Python: 6th of 6 on post-enrolment at five minutes per start (239/240 feasible, mean rank 36.1208 vs 36.0375 for fifth). Hybrid construction alone solved 238/240 with a 48 s cap. Earlier reinsertion pipeline: 6th of 6, mean rank 39.57 at fifteen minutes. Previous UniTime pipeline: 1st, 6th and 2nd of 6 |
 | [2011](demos/itc/2011/) | High-school timetabling | Round 2: 79/180 verified schedules, 269 s per trial. Reconstructed 4th of 5 |
 | [2019](demos/itc/2019/) | University classes, rooms and student sectioning | 1/30 feasible from scratch in 60 s each. Four points, reconstructed 6th of 6 |
 | [2021](demos/itc/2021/) | Sports timetabling | 0/45 feasible from scratch in 60 s each. Zero points, reconstructed 14th of 14 |
