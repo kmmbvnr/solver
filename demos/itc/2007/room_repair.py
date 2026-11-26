@@ -7,7 +7,7 @@ from time import monotonic
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
-from shiftopt import neighborhood_search
+from shiftopt import ResumableAnnealing, neighborhood_search
 
 
 def release_rooms(problem, plan, rng):
@@ -74,3 +74,46 @@ def room_repair(problem, *, attempts, seed):
         costs[i, rooms] = 0
     return neighborhood_search(partial(release_rooms, problem), partial(assign_rooms, problem, costs),
                                itemgetter(0), attempts=attempts, seed=seed, temperature=2)
+
+
+def missing_room_penalty(plan):
+    return 8 * sum(room < 0 for _, room in plan[1])
+
+
+def partial_room_move(problem, plan, rng, deadline):
+    """Place one event, optionally leaving the previous room occupant unroomed."""
+    cost, positions = plan
+    missing = [i for i, (_, room) in enumerate(positions) if room < 0]
+    event = rng.choice(missing) if missing and rng.randrange(4) else rng.randrange(len(positions))
+    source, old_room = positions[event]
+    target = source if old_room < 0 and rng.randrange(2) else rng.choice(problem.periods[event])
+    if target != source:
+        for other, relation in problem.relations[event]:
+            other_time = positions[other][0]
+            if (relation == "before" and target >= other_time) or (relation == "after" and target <= other_time):
+                return None
+    occupants = {}
+    for other, (time, room) in enumerate(positions):
+        if time != target or other == event:
+            continue
+        if problem.clashes[event] & (1 << other):
+            return None
+        if room >= 0:
+            occupants[room] = other
+    rooms = problem.rooms[event]
+    free = [room for room in rooms if room not in occupants]
+    room = rng.choice(free or rooms)
+    if (target, room) == positions[event]:
+        return None
+    result = list(positions)
+    if room in occupants:
+        result[occupants[room]] = target, -1
+    result[event] = target, room
+    result = tuple(result)
+    return (cost if target == source else problem.objective(result)), result
+
+
+def partial_room_search(problem, seed):
+    return ResumableAnnealing(partial(partial_room_move, problem), itemgetter(0),
+                              attempts=3000, cycle_attempts=50000, temperature=8,
+                              penalty=missing_room_penalty, seed=seed)

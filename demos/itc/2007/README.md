@@ -317,6 +317,14 @@ conditions. The validator confirmed all 708 full-track checkpoint schedules
 and all 36 checkpoints in the extended sample. The 15-minute sample has no
 full-track place.
 
+## Search with temporarily unroomed events
+
+Add `--partial-rooms` to a `tim` run to reserve the final 10% of the time
+budget for this step. A move may take an occupied room and leave its previous
+occupant without a room. Later moves can repair that event or move another.
+The search adds eight points per missing room when deciding whether to accept
+a move. Only timetables with every event assigned a room reach the pipeline.
+
 ## Previous UniTime pipeline on the full competition set
 
 Each instance received ten runs with a local 60-second pipeline budget. The 2007 Mac calibration program is a 32-bit Intel executable, so the time limit on this Apple Silicon machine is a local choice. The ten run seeds were 1, 3, …, 19. Each run used two consecutive UniTime seeds. Every returned schedule passed a separate constraint and cost check.

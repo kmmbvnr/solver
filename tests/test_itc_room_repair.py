@@ -40,3 +40,13 @@ class RoomRepairTests(unittest.TestCase):
         plan = 1, ((0, 0), (1, 0))
         step = repair.room_repair(p, attempts=100, seed=1)
         self.assertEqual(step(plan, inf), (0, ((1, 0), (0, 0))))
+
+    def test_partial_room_move_evicts_then_repairs_across_calls(self):
+        from random import Random
+        p = problem([[0], [0, 1]])
+        initial = 1, ((0, 0), (1, 0))
+        partial_plan = repair.partial_room_move(p, initial, Random(4), inf)
+        self.assertEqual(partial_plan, (0, ((1, 0), (1, -1))))
+        self.assertGreater(repair.missing_room_penalty(partial_plan), 0)
+        step = repair.partial_room_search(p, seed=4)
+        self.assertEqual(step(initial, inf), (0, ((1, 0), (1, 1))))
