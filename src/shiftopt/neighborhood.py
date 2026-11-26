@@ -118,13 +118,18 @@ class ResumableAnnealing:
     A cycle cools over cycle_attempts proposals, then restarts at the best plan
     with the next seed. A better external incumbent replaces the current point
     without resetting the cooling schedule. Create a fresh step per run.
+
+    An optional penalty(state) relaxes constraints during the walk. Zero
+    means feasible. Positive finite penalties add to score(state) for move
+    acceptance only. Both callbacks must also handle partial states.
     """
 
-    def __init__(self, move, score, *, attempts, cycle_attempts, temperature, seed=0):
+    def __init__(self, move, score, *, attempts, cycle_attempts, temperature, seed=0, penalty=None):
         if any(type(n) is not int or n < 1 for n in (attempts, cycle_attempts)):
             raise ValueError("attempt budgets must be positive integers")
         if not isfinite(temperature) or temperature <= 0 or not isinstance(seed, int):
             raise ValueError("supply a positive finite temperature and an integer seed")
+        self.penalty = penalty
         self.move, self.score = move, score
         self.attempts, self.cycle_attempts = attempts, cycle_attempts
         self.temperature, self.seed = temperature, seed
@@ -136,6 +141,8 @@ class ResumableAnnealing:
             return None
         value = self.score(incumbent)
         if self.best is None or value < self.best_value:
+            if self.penalty is not None and self.penalty(incumbent) != 0:
+                raise ValueError("initial or replacement incumbent must be feasible")
             self.best = self.current = incumbent
             self.best_value = self.current_value = value
         for _ in range(self.attempts):
@@ -152,11 +159,15 @@ class ResumableAnnealing:
             if proposal is None:
                 continue
             value = self.score(proposal)
-            if value < self.current_value or _metropolis(
-                self.temperature, self.best_value, self.current_value, value, i,
+            penalty = 0 if self.penalty is None else self.penalty(proposal)
+            if penalty < 0 or not isfinite(penalty):
+                raise ValueError("relaxation penalty must be finite and nonnegative")
+            energy = value + penalty if penalty else value
+            if energy < self.current_value or _metropolis(
+                self.temperature, self.best_value, self.current_value, energy, i,
                 self.cycle_attempts, self.acceptance,
             ):
-                self.current, self.current_value = proposal, value
-            if value < self.best_value:
+                self.current, self.current_value = proposal, energy
+            if not penalty and value < self.best_value:
                 self.best, self.best_value = proposal, value
         return self.best

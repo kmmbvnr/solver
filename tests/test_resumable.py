@@ -34,3 +34,12 @@ class ResumeTests(unittest.TestCase):
         step(-1000, inf)
         self.assertEqual(trace[-1][0], -1000)
         self.assertEqual(step.position, 2)
+
+    def test_partial_states_survive_bursts_but_only_feasible_results_escape(self):
+        path = {10: 4, 4: 3, 3: 2}
+        step = ResumableAnnealing(lambda x, rng, deadline: path[x], int, attempts=1,
+                                 cycle_attempts=10, temperature=1, penalty=lambda x: int(x in (3, 4)))
+        self.assertEqual(step(10, inf), 10)
+        self.assertEqual(step(10, 0), 10)
+        self.assertEqual(step(10, inf), 10)
+        self.assertEqual(step(10, inf), 2)
