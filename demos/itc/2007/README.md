@@ -325,6 +325,23 @@ occupant without a room. Later moves can repair that event or move another.
 The search adds eight points per missing room when deciding whether to accept
 a move. Only timetables with every event assigned a room reach the pipeline.
 
+On sets 5, 8 and 14 (seeds 1 and 3), both finishes started from the same
+archived 270-second timetable for each pair. After 30 further seconds the
+partial-room finish tied continued annealing three times and lost three times.
+It retained the starting score on all six runs.
+
+A second comparison gave each step a fresh 300 seconds from the set 5
+checkpoints. The competition validator checked all final schedules and scores.
+
+| Seed | Starting penalty | Ordinary annealing | Partial-room search |
+| ---: | ---: | ---: | ---: |
+| 1 | 410 | 374 | 410 |
+| 3 | 40 | 3 | 40 |
+
+In the first 50,000 attempts on these starts, the new search entered a
+partial timetable 11 and 18 times, respectively. These runs support keeping
+the room move optional. They cover a sample of the post-enrolment track.
+
 ## Previous UniTime pipeline on the full competition set
 
 Each instance received ten runs with a local 60-second pipeline budget. The 2007 Mac calibration program is a 32-bit Intel executable, so the time limit on this Apple Silicon machine is a local choice. The ten run seeds were 1, 3, …, 19. Each run used two consecutive UniTime seeds. Every returned schedule passed a separate constraint and cost check.
