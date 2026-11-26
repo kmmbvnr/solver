@@ -51,7 +51,8 @@ def main():
     parser.add_argument("--resume", action="store_true", help="preserve annealing state across bursts")
     parser.add_argument("--cycle-attempts", type=int, default=50000)
     parser.add_argument("--penalty-events", action="store_true", help="bias tim moves toward penalized student days")
-    parser.add_argument("--conflict-memory", action="store_true", help="penalize repeated evictions during construction")
+    parser.add_argument("--conflict-memory", action=argparse.BooleanOptionalAction,
+                        help="penalize repeated evictions during construction (enabled by default for tim)")
     args = parser.parse_args()
     if args.penalty_events and args.track != "tim":
         parser.error("--penalty-events requires tim")
@@ -78,8 +79,9 @@ def main():
         "greedy": partial(hill_climbing, allow_equal=False),
         "deluge": partial(great_deluge, margin=8, target=0),
     }
+    conflict_memory = args.track == "tim" if args.conflict_memory is None else args.conflict_memory
     steps = [partial(construct, problem, args.seed, args.seconds * 0.8,
-                     conflict_weight=int(args.conflict_memory))]
+                     conflict_weight=int(conflict_memory))]
     if args.track == "ctt":
         steps.append(partial(exchange_labels, problem, 1))
     polish = args.attempts // 10 if args.compactness else 0

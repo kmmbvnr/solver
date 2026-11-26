@@ -2,11 +2,11 @@
 
 The Python pipeline first builds a feasible timetable by placing events and reinserting the events they displace. Simulated annealing moves individual events, swaps assignments and exchanges connected groups between two periods. On the curriculum track a separate step also exchanges room labels. Each edition uses the shared annealing step from ShiftOpt.
 
-Install ShiftOpt with `python -m pip install -e .` and run from the repository root. The default budget is 60 seconds and the default seed is 1.
+Install ShiftOpt with `python -m pip install -e .` and run from the repository root. The default budget is 60 seconds and the default seed is 1. Earlier post-enrolment measurements through the first full-track standings table used blocker count alone. Their commands below select it explicitly.
 
 ```sh
 python -m demos.itc.2007.solve exam demos/itc/2007/exam_comp_set1.exam /tmp/exam.sln
-python -m demos.itc.2007.solve tim demos/itc/2007/comp-2007-2-5.tim /tmp/events.sln
+python -m demos.itc.2007.solve tim demos/itc/2007/comp-2007-2-5.tim /tmp/events.sln --no-conflict-memory
 python -m demos.itc.2007.solve ctt demos/itc/2007/comp01.ctt /tmp/courses.out
 ```
 
@@ -117,7 +117,7 @@ matching can produce a proposal. The generic `neighborhood_search` step
 handles acceptance and retains the best feasible timetable.
 
 ```sh
-python -m demos.itc.2007.solve tim demos/itc/2007/comp-2007-2-5.tim /tmp/tim.sln --seconds 300 --attempts 3000 --policy stagnation --patience 1 --room-repair
+python -m demos.itc.2007.solve tim demos/itc/2007/comp-2007-2-5.tim /tmp/tim.sln --seconds 300 --attempts 3000 --policy stagnation --patience 1 --room-repair --no-conflict-memory
 ```
 
 Each run below used 300 seconds including construction, 3,000 attempts per
@@ -139,7 +139,7 @@ and their penalties. Both switching and room repair remain opt-in.
 ## Python standings on the full post-enrolment track
 
 All 24 scored instances used the ten odd seeds 1–19 and a local budget of
-60 seconds per trial. Construction received up to 48 seconds. Each method
+60 seconds per trial. Construction received up to 48 seconds. In this earlier comparison, conflict memory was off. Each method
 received the same saved start and the remaining wall time for its instance
 and seed. Construction succeeded in 123 of 240 trials across 15 instances,
 taking a median of 1.25 seconds on successful starts. Nine instances yielded
@@ -185,15 +185,16 @@ inserting Python. The competition validator checked every returned schedule
 and its penalty.
 
 ```sh
-python -m demos.itc.2007.solve tim demos/itc/2007/comp-2007-2-5.tim /tmp/events.sln --seconds 60 --seed 1 --policy repeat --resume --attempts 3000 --cycle-attempts 50000
+python -m demos.itc.2007.solve tim demos/itc/2007/comp-2007-2-5.tim /tmp/events.sln --seconds 60 --seed 1 --policy repeat --resume --attempts 3000 --cycle-attempts 50000 --no-conflict-memory
 ```
 
 ## Construction with eviction history
 
 The shared `assignment_constructor` chooses placements, evicts blockers and
 requeues them. The timetable adapter supplies eligible period-room pairs and
-conflicts. Pass `--conflict-memory` to penalize each previous eviction of the
-same event by the same placement. The default uses blocker count alone.
+conflicts. The post-enrolment demo penalizes each previous eviction of the
+same event by the same placement. Use `--no-conflict-memory` for blocker count
+alone. Exams and curriculum use blocker count alone by default.
 
 On all 24 post-enrolment instances, both constructors had 48 seconds, the same
 ten odd seeds and the same item-order and tie-breaking rules. Paired trials
@@ -211,6 +212,33 @@ successes the median paired time to feasibility fell by 1.13 seconds and the
 median paired change in initial penalty was zero. The previous full-pipeline
 experiment had 123 successful starts under its own machine load. The standings
 above still refer to that earlier experiment.
+
+### Full-pipeline comparison
+
+Both variants ran through the CLI on all 24 instances and ten odd seeds (1–19)
+with 60 local wall-clock seconds per run. Construction could use up to 48
+seconds. Resumable annealing used the remaining time, penalty-directed events,
+3,000 attempts per burst and 50,000 per cooling cycle. The paired runs differed
+only in conflict memory and ran in randomized order with ten concurrent jobs.
+
+| Construction | Valid runs | Instances solved | Mean rank | Place |
+| --- | ---: | ---: | ---: | ---: |
+| Blocker count | 133/240 | 15/24 | 50.8542 | 6/6 |
+| Eviction history | 176/240 | 18/24 | 50.3625 | 6/6 |
+
+The competition validator confirmed all 309 returned schedules and penalties.
+History retained all 133 control successes and added 43. On common successes
+it won 68, tied seven and lost 58, with a median paired penalty change of −4.
+
+With history, Müller placed fifth at 32.0604. To split the 18.3021 mean-rank
+gap, subtract Müller's mean rank on each instance from each of our trial ranks
+and divide the sums by 240. The 176 feasible trials contributed 13.4563
+points (74%) and the 64 missing schedules contributed 4.8458 (26%).
+Reproduce the comparison by running this command with each memory flag:
+
+```sh
+python -m demos.itc.2007.solve tim INSTANCE.tim OUTPUT.sln --seconds 60 --seed 1 --policy repeat --resume --attempts 3000 --cycle-attempts 50000 --penalty-events --conflict-memory
+```
 
 ## Previous UniTime pipeline on the full competition set
 
