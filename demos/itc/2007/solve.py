@@ -6,6 +6,7 @@ from importlib import import_module
 from itertools import count
 from operator import itemgetter
 from pathlib import Path
+from time import monotonic
 
 from demos.itc.events import penalty_event, read_events, write_events
 from demos.itc.timetable import TimetableMoves, construct, exchange_labels
@@ -15,6 +16,7 @@ curriculum = import_module("demos.itc.2007.curriculum")
 exams = import_module("demos.itc.2007.exams")
 
 
+ThreeEventChains = import_module("demos.itc.2007.chains").ThreeEventChains
 room_repair = import_module("demos.itc.2007.room_repair").room_repair
 
 
@@ -55,7 +57,14 @@ def main():
                         help="penalize repeated evictions during construction (enabled by default for tim)")
     parser.add_argument("--event-moves", choices=("standard", "displace"),
                         help="select event moves (displace by default for post-enrolment annealing)")
+    parser.add_argument("--three-event-finish", action="store_true",
+                        help="reserve the final 10% of the tim budget for three-event chains")
+    parser.add_argument("--construction-seconds", type=int, help="cap time spent on the initial timetable")
     args = parser.parse_args()
+    if args.three_event_finish and args.track != "tim":
+        parser.error("--three-event-finish requires tim")
+    if args.construction_seconds is not None and args.construction_seconds < 0:
+        parser.error("--construction-seconds must be nonnegative")
     if args.event_moves == "displace" and args.track != "tim":
         parser.error("--event-moves displace requires tim")
     if args.penalty_events and args.track != "tim":
@@ -84,7 +93,10 @@ def main():
         "deluge": partial(great_deluge, margin=8, target=0),
     }
     conflict_memory = args.track == "tim" if args.conflict_memory is None else args.conflict_memory
-    steps = [partial(construct, problem, args.seed, args.seconds * 0.8,
+    construction_seconds = args.seconds * 0.8
+    if args.construction_seconds is not None:
+        construction_seconds = min(construction_seconds, args.construction_seconds)
+    steps = [partial(construct, problem, args.seed, construction_seconds,
                      conflict_weight=int(conflict_memory))]
     if args.track == "ctt":
         steps.append(partial(exchange_labels, problem, 1))
@@ -114,8 +126,13 @@ def main():
     policy = None
     if args.policy != "fixed":
         policy = stagnation_policy(operators, prefix=prefix, patience=args.patience)
-    plan = run_pipeline(steps, score, seconds=args.seconds, policy=policy,
+    finish_seconds = args.seconds * 0.1 if args.three_event_finish else 0
+    deadline = monotonic() + args.seconds
+    plan = run_pipeline(steps, score, seconds=args.seconds - finish_seconds, policy=policy,
                         max_steps=100000 if policy else None)
+    if plan is not None and finish_seconds:
+        remaining = min(finish_seconds, max(0, deadline - monotonic()))
+        plan = run_pipeline([ThreeEventChains(problem, args.seed)], score, initial=plan, seconds=remaining)
     if plan is None:
         parser.exit(1, "No complete timetable found within the budget.\n")
     write(args.output, plan[1])
