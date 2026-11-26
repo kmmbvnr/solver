@@ -6,7 +6,7 @@ Install ShiftOpt with `python -m pip install -e .` and run from the repository r
 
 ```sh
 python -m demos.itc.2007.solve exam demos/itc/2007/exam_comp_set1.exam /tmp/exam.sln
-python -m demos.itc.2007.solve tim demos/itc/2007/comp-2007-2-5.tim /tmp/events.sln --no-conflict-memory
+python -m demos.itc.2007.solve tim demos/itc/2007/comp-2007-2-5.tim /tmp/events.sln --no-conflict-memory --event-moves standard
 python -m demos.itc.2007.solve ctt demos/itc/2007/comp01.ctt /tmp/courses.out
 ```
 
@@ -117,7 +117,7 @@ matching can produce a proposal. The generic `neighborhood_search` step
 handles acceptance and retains the best feasible timetable.
 
 ```sh
-python -m demos.itc.2007.solve tim demos/itc/2007/comp-2007-2-5.tim /tmp/tim.sln --seconds 300 --attempts 3000 --policy stagnation --patience 1 --room-repair --no-conflict-memory
+python -m demos.itc.2007.solve tim demos/itc/2007/comp-2007-2-5.tim /tmp/tim.sln --seconds 300 --attempts 3000 --policy stagnation --patience 1 --room-repair --no-conflict-memory --event-moves standard
 ```
 
 Each run below used 300 seconds including construction, 3,000 attempts per
@@ -185,7 +185,7 @@ inserting Python. The competition validator checked every returned schedule
 and its penalty.
 
 ```sh
-python -m demos.itc.2007.solve tim demos/itc/2007/comp-2007-2-5.tim /tmp/events.sln --seconds 60 --seed 1 --policy repeat --resume --attempts 3000 --cycle-attempts 50000 --no-conflict-memory
+python -m demos.itc.2007.solve tim demos/itc/2007/comp-2007-2-5.tim /tmp/events.sln --seconds 60 --seed 1 --policy repeat --resume --attempts 3000 --cycle-attempts 50000 --no-conflict-memory --event-moves standard
 ```
 
 ## Construction with eviction history
@@ -237,7 +237,42 @@ points (74%) and the 64 missing schedules contributed 4.8458 (26%).
 Reproduce the comparison by running this command with each memory flag:
 
 ```sh
-python -m demos.itc.2007.solve tim INSTANCE.tim OUTPUT.sln --seconds 60 --seed 1 --policy repeat --resume --attempts 3000 --cycle-attempts 50000 --penalty-events --conflict-memory
+python -m demos.itc.2007.solve tim INSTANCE.tim OUTPUT.sln --seconds 60 --seed 1 --policy repeat --resume --attempts 3000 --cycle-attempts 50000 --penalty-events --conflict-memory --event-moves standard
+```
+
+## Local search with event displacement
+
+Post-enrolment annealing now samples a displacement move three times as
+often as either a period-chain exchange or a room move. To move an event,
+it first looks for a free eligible room in the target period. If one event
+blocks the move, it tries to rehome that event in the source period or up to
+five sampled eligible periods. The timetable checks the combined changes
+before annealing scores them. Use `--event-moves standard` to reproduce the
+older neighborhood.
+
+Both neighborhoods used the same saved starts (24 instances, ten odd seeds,
+eviction history), 60 seconds including the measured construction time,
+penalty-directed event selection and resumable annealing at temperature 8.
+Each burst used 3,000 attempts and each cooling cycle lasted 50,000.
+
+| Event moves | Valid runs | Instances solved | Mean rank | Place |
+| --- | ---: | ---: | ---: | ---: |
+| Standard | 177/240 | 18/24 | 50.4125 | 6/6 |
+| Displacement mixture | 177/240 | 18/24 | 47.8146 | 6/6 |
+
+Displacement won 157 paired runs, tied one and lost 19. The median penalty
+fell by 179 points (median paired reduction 19.4% across the 176 nonzero
+baselines). It won 147 of 166 feasible pairs outside the pilot sample. The
+median penalty fell on 17 of 18 solved instances. Set 17 rose from 18 to 37.
+Müller placed fifth at 32.3708 in the displacement comparison. The competition
+validator confirmed all 354 schedules and their penalties.
+
+In a separate seed-1 check with the demo's fixed single annealing burst and
+uniform event selection, displacement won 17 of 18 feasible pairs and reduced
+the median paired penalty by 127 points. All 36 schedules passed validation.
+
+```sh
+python -m demos.itc.2007.solve tim INSTANCE.tim OUTPUT.sln --seconds 60 --seed 1 --policy repeat --resume --attempts 3000 --cycle-attempts 50000 --penalty-events --event-moves displace
 ```
 
 ## Previous UniTime pipeline on the full competition set

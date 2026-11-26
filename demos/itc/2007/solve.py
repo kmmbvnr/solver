@@ -53,8 +53,8 @@ def main():
     parser.add_argument("--penalty-events", action="store_true", help="bias tim moves toward penalized student days")
     parser.add_argument("--conflict-memory", action=argparse.BooleanOptionalAction,
                         help="penalize repeated evictions during construction (enabled by default for tim)")
-    parser.add_argument("--event-moves", choices=("standard", "displace"), default="standard",
-                        help="select the post-enrolment local neighborhood")
+    parser.add_argument("--event-moves", choices=("standard", "displace"),
+                        help="select event moves (displace by default for post-enrolment annealing)")
     args = parser.parse_args()
     if args.event_moves == "displace" and args.track != "tim":
         parser.error("--event-moves displace requires tim")
@@ -90,10 +90,12 @@ def main():
         steps.append(partial(exchange_labels, problem, 1))
     polish = args.attempts // 10 if args.compactness else 0
     prefix = tuple(steps)
-    operators = TimetableMoves.operators
-    if args.event_moves == "displace":
-        operators = ("displace", "displace", "displace", "chain", "room")
-    moves = TimetableMoves(problem, operators, select_event=penalty_event if args.penalty_events else None)
+    move_types = TimetableMoves.operators
+    if args.event_moves == "displace" or (
+        args.event_moves is None and args.track == "tim" and args.search == "anneal"
+    ):
+        move_types = ("displace", "displace", "displace", "chain", "room")
+    moves = TimetableMoves(problem, move_types, select_event=penalty_event if args.penalty_events else None)
     factory = partial(methods[args.search], moves, score, attempts=args.attempts - polish)
     operators = [SearchBurst(factory, args.seed)]
     if args.resume:
