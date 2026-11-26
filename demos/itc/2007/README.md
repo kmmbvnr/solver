@@ -481,6 +481,30 @@ and both random generators at cycle boundaries, for 500,000 attempts on
 each of the six starts. In paired five-minute runs on set 5, the old and
 new selectors both finished at penalties 311 and 8 (seeds 1 and 3).
 
+### Full post-enrolment standings at fifteen minutes
+
+ShiftOpt `65ea27b` ran ordinary annealing on the 24 instances with seeds
+1, 3, …, 19. The local 900-second limit per start included the recorded
+construction time (48-second construction cap). Each run continued from
+its own five-minute checkpoint and could stop at zero penalty. The competition
+validator checked all 177 complete schedules at both checkpoints. The remaining
+63 starts had no complete timetable. Historical finalist scores were held
+fixed. Lower mean rank is better.
+
+| Place | Solver | ShiftOpt at 5 min | ShiftOpt at 15 min |
+| ---: | --- | ---: | ---: |
+| 1 | Cambazard | 14.8146 | 15.2125 |
+| 2 | Atsuta | 27.6208 | 28.1479 |
+| 3 | Chiarandini | 31.6833 | 32.1417 |
+| 4 | Nothegger | 33.0792 | 33.4792 |
+| 5 | Müller | 33.8563 | 34.4521 |
+| 6 | ShiftOpt | 41.9458 | 39.5667 |
+
+The extra time improved 128 of 177 valid runs across 18 solved instances;
+the number with zero penalty rose from 14 to 21. Of the 5.1146 mean-rank
+gap to Müller at fifteen minutes, 4.7042 points came from the 63 failed
+starts, comparing each start with Müller's mean rank on its instance.
+
 ## Previous UniTime pipeline on the full competition set
 
 Each instance received ten runs with a local 60-second pipeline budget. The 2007 Mac calibration program is a 32-bit Intel executable, so the time limit on this Apple Silicon machine is a local choice. The ten run seeds were 1, 3, …, 19. Each run used two consecutive UniTime seeds. Every returned schedule passed a separate constraint and cost check.
