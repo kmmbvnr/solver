@@ -275,6 +275,20 @@ the median paired penalty by 127 points. All 36 schedules passed validation.
 python -m demos.itc.2007.solve tim INSTANCE.tim OUTPUT.sln --seconds 60 --seed 1 --policy repeat --resume --attempts 3000 --cycle-attempts 50000 --penalty-events --event-moves displace
 ```
 
+## Three-event chain finish
+
+Pass `--three-event-finish` on the post-enrolment track to reserve the final
+10% of the pipeline budget for the shared `ejection_chain` step. It selects
+an event, moves it into a placement that displaces a second event, then moves
+the second into a placement that displaces a third. The third must find a
+free placement. All three events change period. The demo checks the combined
+move and the step retains strict improvements. Each attempt explores at most
+13 nodes with depth limited to three.
+
+```sh
+python -m demos.itc.2007.solve tim INSTANCE.tim OUTPUT.sln --seconds 300 --construction-seconds 48 --policy repeat --resume --attempts 3000 --penalty-events --three-event-finish
+```
+
 ## Previous UniTime pipeline on the full competition set
 
 Each instance received ten runs with a local 60-second pipeline budget. The 2007 Mac calibration program is a 32-bit Intel executable, so the time limit on this Apple Silicon machine is a local choice. The ten run seeds were 1, 3, …, 19. Each run used two consecutive UniTime seeds. Every returned schedule passed a separate constraint and cost check.
