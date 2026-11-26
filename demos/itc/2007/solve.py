@@ -11,7 +11,7 @@ from time import monotonic
 
 from demos.itc.events import penalty_event, read_events, write_events
 from demos.itc.timetable import TimetableMoves, construct, exchange_labels
-from shiftopt import ResumableAnnealing, great_deluge, hill_climbing, run_pipeline, simulated_annealing, stagnation_policy
+from shiftopt import ResumableAnnealing, great_deluge, hill_climbing, run_pipeline, simulated_annealing, stagnation_policy, tabu_assignment
 
 curriculum = import_module("demos.itc.2007.curriculum")
 exams = import_module("demos.itc.2007.exams")
@@ -19,6 +19,25 @@ exams = import_module("demos.itc.2007.exams")
 
 ThreeEventChains = import_module("demos.itc.2007.chains").ThreeEventChains
 room_moves = import_module("demos.itc.2007.room_repair")
+
+
+def construct_with_tabu(problem, seed, build_deadline, incumbent, deadline):
+    deadline = min(build_deadline, deadline)
+    if incumbent is not None or monotonic() >= deadline:
+        return None
+    clashes = []
+    for i, mask in enumerate(problem.clashes):
+        mask >>= i + 1
+        while mask:
+            bit = mask & -mask
+            clashes.append((i, i + bit.bit_length()))
+            mask ^= bit
+    before = [(i, j) for i, relations in enumerate(problem.relations) for j, kind in relations if kind == "before"]
+    build = tabu_assignment(problem.periods, problem.rooms, clashes, before, seed=seed)
+    positions = build(None, deadline)
+    if positions is not None:
+        return problem.objective(positions), positions
+    return None
 
 
 class PrecedenceMoves:
@@ -101,8 +120,12 @@ def main():
                         help="use the final 10%% of the tim budget to search through unroomed events")
     finish.add_argument("--three-event-finish", action="store_true",
                         help="reserve the final 10%% of the tim budget for three-event chains")
+    parser.add_argument("--constructor", choices=("hybrid", "reinsert", "tabu"),
+                        help="tim construction (default: brief reinsertion, then tabu conflict repair)")
     parser.add_argument("--construction-seconds", type=int, help="cap time spent on the initial timetable")
     args = parser.parse_args()
+    if args.constructor and args.track != "tim":
+        parser.error("--constructor requires tim")
     if args.precedence_weight <= 0:
         parser.error("--precedence-weight must be positive")
     if args.precedence and (args.track != "tim" or not args.resume):
@@ -146,8 +169,13 @@ def main():
     construction_seconds = args.seconds * 0.8
     if args.construction_seconds is not None:
         construction_seconds = min(construction_seconds, args.construction_seconds)
-    steps = [partial(construct, problem, args.seed, construction_seconds,
-                     conflict_weight=int(conflict_memory))]
+    constructor = args.constructor or ("hybrid" if args.track == "tim" else "reinsert")
+    steps = []
+    if constructor != "tabu":
+        warmup = min(4, construction_seconds / 4) if constructor == "hybrid" else construction_seconds
+        steps.append(partial(construct, problem, args.seed, warmup, conflict_weight=int(conflict_memory)))
+    if constructor != "reinsert":
+        steps.append(partial(construct_with_tabu, problem, args.seed, monotonic() + construction_seconds))
     if args.track == "ctt":
         steps.append(partial(exchange_labels, problem, 1))
     polish = args.attempts // 10 if args.compactness else 0
